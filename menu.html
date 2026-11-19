@@ -3,25 +3,144 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Menu VR – UVERS</title>
+<title>UVERS XR Lab · Pameran VR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  body{margin:0;min-height:100vh;background:#0d1420;color:#fff;font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:24px;box-sizing:border-box}
-  h1{margin:0;font-size:40px;text-align:center}
-  p{margin:0;color:#9fb4d6;font-size:20px;text-align:center}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;width:100%;max-width:1000px}
-  a{display:block;text-decoration:none;color:#fff;border-radius:20px;padding:28px;border:3px solid;background:#141e30;transition:transform .15s}
-  a:hover{transform:scale(1.03)}
-  a b{display:block;font-size:30px;margin-bottom:8px}
-  a span{font-size:18px;color:#c9d6ee}
+  :root{
+    --bg:#05060f; --ink:#f4f6ff; --muted:#a9b1d6;
+    --glass:rgba(255,255,255,.07); --glass2:rgba(255,255,255,.12); --line:rgba(255,255,255,.16);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:'Space Grotesk',system-ui,sans-serif}
+  body{overflow-x:hidden}
+  /* latar aurora */
+  .aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+  .blob{position:absolute;width:60vmax;height:60vmax;border-radius:50%;filter:blur(90px);opacity:.55;mix-blend-mode:screen;animation:float 22s ease-in-out infinite}
+  .b1{background:#ff3fa4;top:-20vmax;left:-15vmax}
+  .b2{background:#5b4bff;top:10vmax;right:-20vmax;animation-delay:-7s}
+  .b3{background:#00c8ff;bottom:-30vmax;left:20vmax;animation-delay:-13s;opacity:.4}
+  @keyframes float{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(6vmax,4vmax) scale(1.1)}66%{transform:translate(-4vmax,6vmax) scale(.95)}}
+  .grid{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.22;
+    background-image:linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);
+    background-size:56px 56px;mask-image:radial-gradient(ellipse at 50% 40%,#000 30%,transparent 75%)}
+  main{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:48px 28px 56px}
+  /* header */
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:40px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-weight:700;font-size:20px;
+    background:linear-gradient(135deg,#ff3fa4,#7b5cff);box-shadow:0 8px 30px rgba(123,92,255,.5)}
+  .brand b{display:block;font-size:20px}
+  .brand span{font-size:14px;color:var(--muted)}
+  .pill{padding:10px 16px;border-radius:99px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#3dffa8;box-shadow:0 0 12px #3dffa8}
+  h1{font-size:clamp(40px,6vw,76px);line-height:1;margin:0 0 16px;letter-spacing:-.02em}
+  h1 em{font-style:normal;background:linear-gradient(90deg,#ff7ad1,#a48cff 50%,#5ee7ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{font-size:clamp(17px,1.6vw,21px);color:var(--muted);max-width:720px;line-height:1.55;margin:0 0 40px}
+  /* kartu kaca */
+  .glass{position:relative;border-radius:28px;background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.03));
+    border:1px solid var(--line);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);
+    box-shadow:0 24px 60px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18)}
+  a.card{display:flex;flex-direction:column;text-decoration:none;color:inherit;padding:28px;transition:transform .25s ease,box-shadow .25s ease,border-color .25s}
+  a.card:hover,a.card:focus-visible{transform:translateY(-6px);border-color:rgba(255,255,255,.35);box-shadow:0 30px 70px rgba(0,0,0,.45),0 0 0 1px var(--accent),0 0 60px -10px var(--accent)}
+  a.card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:radial-gradient(500px circle at 0% 0%,var(--accent),transparent 45%);opacity:.18}
+  .icon{width:64px;height:64px;border-radius:20px;display:grid;place-items:center;font-size:32px;margin-bottom:22px;
+    background:rgba(255,255,255,.08);border:1px solid var(--line);box-shadow:0 0 30px -6px var(--accent)}
+  .card h3{margin:0 0 8px;font-size:26px}
+  .card p{margin:0 0 22px;color:var(--muted);line-height:1.5;font-size:16px;flex:1}
+  .tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+  .tag{font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;border-radius:99px;background:rgba(255,255,255,.07);border:1px solid var(--line);color:#d9def5}
+  .go{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid var(--line);font-weight:600}
+  .go span:last-child{transition:transform .25s}
+  a.card:hover .go span:last-child{transform:translateX(6px)}
+  /* hero */
+  .hero{display:grid;grid-template-columns:1.25fr 1fr;gap:0;overflow:hidden;margin-bottom:24px;--accent:#ff3fa4}
+  .hero .txt{padding:40px}
+  .hero .badge{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:8px 14px;border-radius:99px;
+    background:linear-gradient(90deg,rgba(255,63,164,.25),rgba(123,92,255,.25));border:1px solid rgba(255,140,220,.45);color:#ffd0ef;margin-bottom:18px}
+  .hero h2{font-size:clamp(34px,4vw,52px);margin:0 0 12px;line-height:1.05}
+  .hero p{color:var(--muted);font-size:18px;line-height:1.55;margin:0 0 26px}
+  .cta{display:inline-flex;align-items:center;gap:12px;padding:18px 26px;border-radius:18px;font-weight:700;font-size:18px;color:#fff;text-decoration:none;
+    background:linear-gradient(135deg,#ff3fa4,#7b5cff);box-shadow:0 12px 40px rgba(160,80,255,.5);transition:transform .2s}
+  .cta:hover{transform:translateY(-3px) scale(1.02)}
+  .visual{position:relative;min-height:320px;display:grid;place-items:center;background:radial-gradient(circle at 50% 50%,rgba(123,92,255,.25),transparent 60%)}
+  .portal{width:230px;height:230px;border-radius:50%;position:relative;
+    background:radial-gradient(circle,#fff 0 6%,#ff5adc 18%,#6e3cff 45%,transparent 70%);box-shadow:0 0 80px #ff3fa4,inset 0 0 60px rgba(255,255,255,.4);animation:spin 8s linear infinite}
+  .portal::before,.portal::after{content:"";position:absolute;inset:-14px;border-radius:50%;border:3px solid rgba(255,122,224,.9);border-left-color:transparent;border-bottom-color:transparent}
+  .portal::after{inset:-30px;border:2px solid rgba(138,123,255,.8);border-right-color:transparent;animation:spin 5s linear infinite reverse}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ufo{position:absolute;font-size:46px;animation:bob 3s ease-in-out infinite}
+  .ufo.a{top:16%;left:14%}.ufo.b{bottom:14%;right:16%;animation-delay:-1.5s;font-size:36px}
+  @keyframes bob{50%{transform:translateY(-14px) rotate(6deg)}}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+  /* langkah */
+  .how{margin-top:28px;padding:26px 30px;display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+  .step{display:flex;gap:14px;align-items:flex-start}
+  .num{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-weight:700;background:rgba(255,255,255,.1);border:1px solid var(--line)}
+  .step b{display:block;margin-bottom:4px}
+  .step span{color:var(--muted);font-size:14px;line-height:1.45}
+  footer{margin-top:36px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;color:var(--muted);font-size:14px}
+  @media (max-width:980px){.hero{grid-template-columns:1fr}.visual{min-height:240px}.cards{grid-template-columns:1fr 1fr}.how{grid-template-columns:1fr 1fr}}
+  @media (max-width:640px){.cards,.how{grid-template-columns:1fr}main{padding:28px 18px}.hero .txt{padding:28px}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-  <h1>Pameran VR · UVERS</h1>
-  <p>Prodi TIF · ME · IE — pilih aplikasi, lalu tekan ENTER VR</p>
-  <div class="grid">
-    <a href="mecanum.html" style="border-color:#ffb020"><b>🤖 Robot Mecanum</b><span>Kendalikan robot holonomic & lihat cara kerja tiap rodanya</span></a>
-    <a href="blaster.html" style="border-color:#a066ff"><b>🚀 Galaksi Blaster</b><span>Tembak alien sebelum menabrakmu (75 detik)</span></a>
-    <a href="index.html" style="border-color:#33ddff"><b>🎈 Pop Bola</b><span>Pecahkan bola dengan tangan — cocok untuk pemula</span></a>
-  </div>
+<div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+<div class="grid"></div>
+<main>
+  <header>
+    <div class="brand"><div class="logo">XR</div><div><b>UVERS XR Lab</b><span>Prodi TIF · ME · IE</span></div></div>
+    <div class="pill"><span class="dot"></span>Siap dimainkan di Meta Quest 3</div>
+  </header>
+
+  <h1>Masuk ke dunia <em>virtual</em> &amp; <em>mixed reality</em></h1>
+  <p class="lead">Empat pengalaman interaktif buatan kami, dari game seru sampai simulasi robotika. Pilih satu, pakai headset, lalu tekan <b>ENTER VR</b>.</p>
+
+  <section class="glass hero">
+    <div class="txt">
+      <span class="badge">✦ Baru · Mixed Reality</span>
+      <h2>Invasi Portal</h2>
+      <p>Portal alien terbuka <b>di ruangan nyata</b> di sekitarmu. Tembak musuh, tutup portalnya, pakai gelombang kejut, dan kalahkan kapal induk di detik-detik terakhir.</p>
+      <a class="cta" href="invasi.html">Mainkan sekarang <span>→</span></a>
+    </div>
+    <div class="visual" aria-hidden="true"><div class="portal"></div><div class="ufo a">🛸</div><div class="ufo b">👾</div></div>
+  </section>
+
+  <section class="cards">
+    <a class="card glass" href="mecanum.html" style="--accent:#ffb020">
+      <div class="icon">🤖</div>
+      <div class="tags"><span class="tag">Simulasi</span><span class="tag">Robotika</span></div>
+      <h3>Robot Mecanum</h3>
+      <p>Kendalikan robot holonomic yang bisa bergeser ke samping. Lihat gaya di tiap roda dan rumus kinematikanya secara langsung.</p>
+      <div class="go"><span>Buka simulasi</span><span>→</span></div>
+    </a>
+    <a class="card glass" href="blaster.html" style="--accent:#a066ff">
+      <div class="icon">🚀</div>
+      <div class="tags"><span class="tag">Game</span><span class="tag">75 detik</span></div>
+      <h3>Galaksi Blaster</h3>
+      <p>Berdiri di platform luar angkasa dan tembak alien sebelum mereka menabrakmu. Kejar combo hingga x4.</p>
+      <div class="go"><span>Mainkan</span><span>→</span></div>
+    </a>
+    <a class="card glass" href="index.html" style="--accent:#33ddff">
+      <div class="icon">🎈</div>
+      <div class="tags"><span class="tag">Pemula</span><span class="tag">Hand tracking</span></div>
+      <h3>Pop Bola</h3>
+      <p>Pecahkan bola dengan sentuhan tangan atau controller. Cocok untuk yang baru pertama kali mencoba VR.</p>
+      <div class="go"><span>Mainkan</span><span>→</span></div>
+    </a>
+  </section>
+
+  <section class="glass how">
+    <div class="step"><div class="num">1</div><div><b>Pakai headset</b><span>Atur tali sampai gambar terlihat tajam.</span></div></div>
+    <div class="step"><div class="num">2</div><div><b>Pilih aplikasi</b><span>Tunjuk kartu lalu tarik trigger atau pinch.</span></div></div>
+    <div class="step"><div class="num">3</div><div><b>Tekan ENTER VR</b><span>Atau "Mulai Mixed Reality" di Invasi Portal.</span></div></div>
+    <div class="step"><div class="num">4</div><div><b>Jaga jarak aman</b><span>Beri ruang ±1 m di sekitar pemain.</span></div></div>
+  </section>
+
+  <footer><span>© UVERS XR Lab · Pameran Kampus</span><span>Dibuat dengan WebXR &amp; Three.js</span></footer>
+</main>
 </body>
 </html>

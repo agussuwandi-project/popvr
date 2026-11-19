@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Invasi Portal MR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--glass:rgba(255,255,255,.08);--line:rgba(255,255,255,.18)}
+  body{margin:0;background:#04050c;color:#fff;font-family:'Space Grotesk',system-ui,sans-serif;overflow:hidden}
+  canvas{display:block}
+  .nav{position:fixed;top:16px;left:16px;z-index:5;padding:10px 16px;border-radius:14px;background:var(--glass);border:1px solid var(--line);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:#fff;text-decoration:none;font-weight:600}
+  #ov{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:5;width:min(560px,calc(100% - 32px));padding:26px 28px;border-radius:26px;
+    background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.04));border:1px solid var(--line);
+    backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);box-shadow:0 20px 60px rgba(0,0,0,.45)}
+  #ov.hide{display:none}
+  #ov .tag{display:inline-block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:5px 10px;border-radius:99px;background:rgba(255,80,200,.18);border:1px solid rgba(255,120,220,.4);color:#ffb3ec}
+  #ov h1{margin:12px 0 6px;font-size:34px;line-height:1.1}
+  #ov p{margin:0 0 18px;color:#c9cfe6;line-height:1.5}
+  .btns{display:flex;gap:12px;flex-wrap:wrap}
+  .btn{flex:1;min-width:200px;padding:16px 18px;border-radius:16px;border:1px solid var(--line);font:600 17px 'Space Grotesk',system-ui;color:#fff;cursor:pointer;
+    background:rgba(255,255,255,.08);transition:transform .15s,background .15s}
+  .btn:hover{transform:translateY(-2px);background:rgba(255,255,255,.14)}
+  .btn.primary{background:linear-gradient(135deg,#ff3fa4,#7b5cff);border:none;box-shadow:0 8px 28px rgba(160,80,255,.45)}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+  #msg{margin-top:12px;font-size:14px;color:#9aa3c7}
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<a class="nav" href="menu.html">← Menu</a>
+<div id="ov">
+  <span class="tag">Mixed Reality · Baru</span>
+  <h1>Invasi Portal</h1>
+  <p>Portal alien terbuka di ruangan nyatamu. Tembak musuh, tutup portalnya, dan kalahkan kapal induk di detik terakhir. Lihat sekeliling, karena mereka bisa datang dari belakang!</p>
+  <div class="btns">
+    <button class="btn primary" id="btnAR" disabled>Mulai Mixed Reality</button>
+    <button class="btn" id="btnVR" disabled>Mulai VR</button>
+  </div>
+  <div id="msg">Memeriksa perangkat…</div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+
+// ====== PENGATURAN (silakan ubah) ======
+const EVENT_NAME = 'UVERS XR Lab';
+const DURATION = 90;    // detik per ronde
+const LIVES = 5;
+const BOSS_AT = 20;     // boss muncul saat sisa waktu ≤ angka ini
+const ENEMY = {
+  drone: { hp: 1, pts: 10, r: 0.32, speed: [0.9, 1.5], color: 0xff33cc },
+  fast:  { hp: 1, pts: 20, r: 0.28, speed: [1.6, 2.2], color: 0x55ff66 },
+  tank:  { hp: 3, pts: 40, r: 0.42, speed: [0.6, 0.9], color: 0xff8833 },
+};
+// =======================================
+
+const R = THREE.MathUtils;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.xr.enabled = true;
+renderer.xr.setReferenceSpaceType('local-floor');
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const BG = new THREE.Color(0x04050c);
+scene.background = BG.clone();
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.03, 200);
+camera.position.set(0, 1.6, 0.8); scene.add(camera);
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+scene.add(new THREE.HemisphereLight(0xaabbff, 0x332244, 1.3));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-2, 5, 2); scene.add(sun);
+
+// ---------- Lingkungan VR (disembunyikan di mode MR) ----------
+const env = new THREE.Group(); scene.add(env);
+{
+  env.add(new THREE.GridHelper(40, 80, 0xff3fa4, 0x2a1a55));
+  const n = 1500, p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) new THREE.Vector3().randomDirection().multiplyScalar(R.randFloat(70, 110)).toArray(p, i * 3);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  env.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 0.3 })));
+  const neb = new THREE.Mesh(new THREE.SphereGeometry(14, 48, 32), new THREE.MeshStandardMaterial({ color: 0x2b6bff, emissive: 0x0c2266, roughness: 1 }));
+  neb.position.set(-30, 20, -60); env.add(neb);
+}
+let xrKind = null; // 'ar' | 'vr' | null
+function applyEnv() {
+  const ar = xrKind === 'ar';
+  env.visible = !ar; scene.background = ar ? null : BG.clone();
+}
+
+// ---------- Utilitas panel ----------
+function makePanel(w, h, cw, ch) {
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const ctx = c.getContext('2d'); const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+  return { mesh, ctx, tex, c };
+}
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function glass(ctx, W, H, accent) {
+  const g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, 'rgba(40,30,80,.78)'); g.addColorStop(1, 'rgba(10,12,30,.78)');
+  ctx.fillStyle = g; rr(ctx, 6, 6, W - 12, H - 12, 44); ctx.fill();
+  ctx.strokeStyle = accent; ctx.lineWidth = 5; rr(ctx, 6, 6, W - 12, H - 12, 44); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.07)'; rr(ctx, 14, 14, W - 28, (H - 28) * .38, 36); ctx.fill();
+}
+const FONT = "'Space Grotesk', system-ui, sans-serif";
+
+const board = makePanel(2.0, 0.8, 1280, 512);
+board.mesh.position.set(0, 2.35, -2.6); board.mesh.lookAt(0, 1.6, 0); scene.add(board.mesh);
+
+// ---------- Target mulai ----------
+const startT = new THREE.Group(); startT.position.set(0, 1.3, -2.0); scene.add(startT);
+for (let i = 0; i < 3; i++) startT.add(new THREE.Mesh(new THREE.TorusGeometry(0.3 - i * 0.095, 0.03, 8, 48), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xffffff : 0xff3fa4 })));
+startT.add(new THREE.Mesh(new THREE.CircleGeometry(0.05, 24), new THREE.MeshBasicMaterial({ color: 0x7b5cff })));
+const startHit = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 8), new THREE.MeshBasicMaterial({ visible: false }));
+startHit.userData.kind = 'start'; startT.add(startHit);
+const startLabel = makePanel(1.0, 0.17, 768, 128); startLabel.mesh.position.y = 0.42; startT.add(startLabel.mesh);
+{ const { ctx, c } = startLabel; glass(ctx, c.width, c.height, 'rgba(255,120,220,.8)');
+  ctx.fillStyle = '#fff'; ctx.font = `700 54px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('TEMBAK UNTUK MULAI', c.width / 2, c.height / 2 + 3); startLabel.tex.needsUpdate = true; }
+
+
+// ---------- Tombol KELUAR (tembak untuk keluar dari VR/MR) ----------
+const exitT = new THREE.Group(); scene.add(exitT);
+exitT.add(new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.022, 8, 40), new THREE.MeshBasicMaterial({ color: 0xff4466 })));
+{ const x1 = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.01), new THREE.MeshBasicMaterial({ color: 0xffffff })); x1.rotation.z = Math.PI / 4;
+  const x2 = x1.clone(); x2.rotation.z = -Math.PI / 4; exitT.add(x1, x2); }
+const exitHit = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 8), new THREE.MeshBasicMaterial({ visible: false }));
+exitHit.userData.isExit = true; exitHit.userData.kind = 'exit'; exitT.add(exitHit);
+const exitLabel = makePanel(0.42, 0.1, 384, 96); exitLabel.mesh.position.y = 0.26; exitT.add(exitLabel.mesh);
+{ const { ctx, c } = exitLabel; glass(ctx, c.width, c.height, 'rgba(255,90,120,.9)', 26);
+  ctx.fillStyle = '#fff'; ctx.font = `700 44px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('KELUAR', c.width / 2, c.height / 2 + 3); exitLabel.tex.needsUpdate = true; }
+function exitXR() { try { renderer.xr.getSession()?.end(); } catch (e) {} }
+
+// ---------- Suara ----------
+let ac = null, noiseBuf = null;
+function initAudio() {
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)();
+    noiseBuf = ac.createBuffer(1, ac.sampleRate * 0.8, ac.sampleRate);
+    const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } catch (e) {} }
+  ac?.resume?.();
+}
+function tone(f, d, type = 'sine', vol = .2, ramp = 1) {
+  if (!ac) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f * ramp), t + d);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + .02);
+}
+function boom(vol = .5, dur = .5, freq = 900) {
+  if (!ac || !noiseBuf) return; const t = ac.currentTime, s = ac.createBufferSource(); s.buffer = noiseBuf;
+  const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(freq, t); f.frequency.exponentialRampToValueAtTime(50, t + dur);
+  const g = ac.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  s.connect(f).connect(g).connect(ac.destination); s.start(t); s.stop(t + dur);
+}
+// suara berarah (kiri/kanan) agar pemain tahu asal musuh
+function panTone(pos, f, d, type, vol) {
+  if (!ac) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain(), p = ac.createStereoPanner ? ac.createStereoPanner() : null;
+  const rel = pos.clone().sub(head).applyQuaternion(camQ.clone().invert());
+  o.type = type; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 1.8, t + d);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+  if (p) { p.pan.value = R.clamp(rel.x / Math.max(.5, rel.length()), -1, 1); o.connect(g).connect(p).connect(ac.destination); } else o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + d + .02);
+}
+const sfx = {
+  laser: () => tone(1500, .12, 'square', .07, .15),
+  hit:   () => tone(520, .08, 'triangle', .18, 2),
+  kill:  () => { boom(.4, .45, 1500); tone(240, .2, 'sawtooth', .07, .4); },
+  hurt:  () => { boom(.7, .7, 400); tone(110, .5, 'sawtooth', .2, .5); },
+  portalOpen: (p) => panTone(p, 180, .7, 'sawtooth', .12),
+  portalClose: () => { boom(.5, .8, 2500); [500, 700, 1000].forEach((f, i) => setTimeout(() => tone(f, .15, 'triangle', .15), i * 70)); },
+  shock: () => { boom(.9, 1.2, 3000); tone(80, 1, 'sine', .4, .5); },
+  orb:   () => [880, 1320, 1760].forEach((f, i) => setTimeout(() => tone(f, .12, 'sine', .12), i * 80)),
+  boss:  () => { tone(70, 1.5, 'sawtooth', .25, 1.4); setTimeout(() => tone(55, 1.5, 'sawtooth', .25, 1.2), 600); },
+  start: () => [440, 660, 880, 1320].forEach((f, i) => setTimeout(() => tone(f, .12, 'square', .1), i * 100)),
+  win:   () => [523, 659, 784, 1046, 1318].forEach((f, i) => setTimeout(() => tone(f, .25, 'triangle', .2), i * 130)),
+  over:  () => [660, 520, 400, 260].forEach((f, i) => setTimeout(() => tone(f, .25, 'triangle', .2), i * 160)),
+};
+addEventListener('pointerdown', initAudio); addEventListener('click', initAudio, true);
+
+// ---------- Efek ----------
+const fx = [];
+function beam(from, to, color) {
+  const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([from, to]), new THREE.LineBasicMaterial({ color, transparent: true }));
+  l.userData = { t: 0, life: .14, fade: true }; scene.add(l); fx.push(l);
+  const s = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), new THREE.MeshBasicMaterial({ color, transparent: true }));
+  s.position.copy(to); s.userData = { t: 0, life: .14, fade: true }; scene.add(s); fx.push(s);
+}
+const pGeo = new THREE.BoxGeometry(1, 1, 1);
+function explode(pos, color, n = 24, size = .05, spd = 3) {
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: true });
+  for (let i = 0; i < n; i++) {
+    const p = new THREE.Mesh(pGeo, mat); p.position.copy(pos); p.scale.setScalar(size * R.randFloat(.5, 1.3));
+    p.userData = { v: new THREE.Vector3().randomDirection().multiplyScalar(R.randFloat(.3, 1) * spd), t: 0, life: R.randFloat(.5, .9), spin: R.randFloat(-8, 8), fade: true, phys: true };
+    scene.add(p); fx.push(p);
+  }
+  const f = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .9, blending: THREE.AdditiveBlending }));
+  f.position.copy(pos); f.scale.setScalar(.12); f.userData = { t: 0, life: .25, grow: 2.5, fade: true }; scene.add(f); fx.push(f);
+}
+function popup(pos, text, color = '#ffffff', size = .5) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128; const ctx = c.getContext('2d');
+  ctx.font = `700 84px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = 10; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.strokeText(text, 256, 64); ctx.fillStyle = color; ctx.fillText(text, 256, 64);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  s.position.copy(pos); s.scale.set(size, size / 4, 1); s.renderOrder = 998;
+  s.userData = { t: 0, life: .9, fade: true, rise: .5, tex }; scene.add(s); fx.push(s);
+}
+const hurtSphere = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 12),
+  new THREE.MeshBasicMaterial({ color: 0xff0022, transparent: true, opacity: 0, side: THREE.BackSide, depthTest: false }));
+hurtSphere.renderOrder = 999; camera.add(hurtSphere);
+let hurtT = 0, flashCol = 0xff0022;
+
+// ---------- Tekstur portal ----------
+function portalTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(128, 128, 10, 128, 128, 128);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.25, 'rgba(255,90,220,.95)'); g.addColorStop(.6, 'rgba(110,60,255,.75)'); g.addColorStop(1, 'rgba(40,0,120,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 6;
+  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(128, 128, 30 + i * 18, i, i + 2.4); ctx.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const PTEX = portalTexture();
+
+// ---------- Entitas ----------
+const shoot = [];
+const addShoot = (m, kind, ref) => { m.userData.kind = kind; m.userData.ref = ref; shoot.push(m); };
+const remShoot = m => { const i = shoot.indexOf(m); if (i >= 0) shoot.splice(i, 1); };
+const portals = [], enemies = [], projs = [];
+let orb = null, boss = null;
+const head = new THREE.Vector3(), camQ = new THREE.Quaternion();
+
+function emi(color, extra = {}) { return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: .55, roughness: .35, metalness: .3, ...extra }); }
+function makeEnemy(type) {
+  const g = new THREE.Group(), s = 0.6;
+  if (type === 'drone') {
+    g.add(new THREE.Mesh(new THREE.OctahedronGeometry(0.25 * s, 0), emi(0xff33cc, { flatShading: true })));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.38 * s, 0.025, 8, 32), emi(0x33e0ff)); g.add(ring); g.userData.spin = ring;
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06 * s, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffaa })); eye.position.z = .13; g.add(eye);
+  } else if (type === 'fast') {
+    const b = new THREE.Mesh(new THREE.ConeGeometry(0.15 * s, 0.55 * s, 6), emi(0x55ff66, { flatShading: true })); b.rotation.x = Math.PI / 2; g.add(b);
+    for (const k of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(0.4 * s, 0.015, 0.16 * s), emi(0x22aa44)); w.position.set(k * .1, 0, -.05); g.add(w); }
+  } else {
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42 * s, 0), emi(0xff8833, { flatShading: true })); g.add(b); g.userData.spin = b;
+    for (let i = 0; i < 8; i++) { const sp = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 6), emi(0xffdd55));
+      const d = new THREE.Vector3().randomDirection(); sp.position.copy(d).multiplyScalar(0.27); sp.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d); g.add(sp); }
+  }
+  const hb = new THREE.Mesh(new THREE.SphereGeometry(ENEMY[type].r, 10, 8), new THREE.MeshBasicMaterial({ visible: false })); g.add(hb);
+  g.userData = { ...g.userData, type, hp: ENEMY[type].hp, hb, t: 0, phase: Math.random() * 10 };
+  addShoot(hb, 'enemy', g); return g;
+}
+function spawnEnemy(from) {
+  const prog = Math.min(1, elapsed / DURATION), r = Math.random();
+  const type = elapsed > 25 && r < .2 ? 'tank' : elapsed > 10 && r < .5 ? 'fast' : 'drone';
+  const e = makeEnemy(type); e.position.copy(from); e.userData.speed = R.lerp(...ENEMY[type].speed, prog);
+  scene.add(e); enemies.push(e);
+}
+function killEnemy(e, byShot = true) {
+  if (!enemies.includes(e)) return;
+  scene.remove(e); enemies.splice(enemies.indexOf(e), 1); remShoot(e.userData.hb);
+  explode(e.position, ENEMY[e.userData.type].color, e.userData.type === 'tank' ? 36 : 22);
+  if (byShot) { const pts = ENEMY[e.userData.type].pts * mult(); score += pts; popup(e.position.clone().add(new THREE.Vector3(0, .2, 0)), '+' + pts, '#ffe27a'); }
+}
+function spawnPortal() {
+  const prog = Math.min(1, elapsed / DURATION);
+  const spread = elapsed < 15 ? 70 : elapsed < 35 ? 130 : 180; // makin lama, makin dari belakang
+  const a = R.degToRad(R.randFloat(-spread, spread)), d = R.randFloat(2.8, 3.8);
+  const g = new THREE.Group(); g.position.set(head.x + Math.sin(a) * d, R.randFloat(1.1, 2.2), head.z - Math.cos(a) * d);
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.55, 48), new THREE.MeshBasicMaterial({ map: PTEX, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.035, 10, 64), new THREE.MeshBasicMaterial({ color: 0xff7ae0 }));
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.012, 6, 64), new THREE.MeshBasicMaterial({ color: 0x8a7bff }));
+  const hb = new THREE.Mesh(new THREE.CircleGeometry(0.6, 16), new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide }));
+  g.add(disc, ring, ring2, hb); g.lookAt(head); g.scale.setScalar(0.01);
+  g.userData = { disc, ring2, hb, hp: 5, t: 0, life: R.randFloat(7, 10), spawnT: .8, rate: R.lerp(2.0, 1.1, prog) };
+  addShoot(hb, 'portal', g); scene.add(g); portals.push(g); sfx.portalOpen(g.position);
+}
+function closePortal(p, byShot) {
+  if (!portals.includes(p)) return;
+  remShoot(p.userData.hb); portals.splice(portals.indexOf(p), 1); p.userData.closing = 0; closing.push(p);
+  if (byShot) { const pts = 100 * mult(); score += pts; explode(p.position, 0xff7ae0, 50, .06, 4); popup(p.position.clone().add(new THREE.Vector3(0, .5, 0)), 'PORTAL DITUTUP +' + pts, '#ff9be8', .9); sfx.portalClose(); }
+}
+const closing = [];
+function spawnOrb() {
+  const a = R.degToRad(R.randFloat(-60, 60)), d = R.randFloat(1.8, 2.4);
+  orb = new THREE.Group(); orb.position.set(head.x + Math.sin(a) * d, R.randFloat(1.4, 2.0), head.z - Math.cos(a) * d);
+  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.14, 1), new THREE.MeshStandardMaterial({ color: 0xffe066, emissive: 0xffaa00, emissiveIntensity: 1.2, metalness: .6, flatShading: true }));
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(0.24, 20, 14), new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: .25, blending: THREE.AdditiveBlending, depthWrite: false }));
+  const hb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), new THREE.MeshBasicMaterial({ visible: false }));
+  orb.add(core, halo, hb); orb.userData = { t: 0, core, halo, hb }; addShoot(hb, 'orb', orb); scene.add(orb); sfx.orb();
+}
+function shockwave(pos) {
+  const s = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20), new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: .5, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false }));
+  s.position.copy(pos); s.scale.setScalar(.1); s.userData = { t: 0, life: .7, grow: 12, fade: true }; scene.add(s); fx.push(s);
+  hurtT = .35; flashCol = 0xfff2a0; hurtSphere.material.color.setHex(flashCol); sfx.shock();
+  let n = 0; for (const e of [...enemies]) { killEnemy(e, true); n++; }
+  for (const p of [...projs]) { removeProj(p); explode(p.position, 0xff4444, 8); }
+  popup(pos.clone().add(new THREE.Vector3(0, .4, 0)), n ? `GELOMBANG KEJUT x${n}!` : 'GELOMBANG KEJUT!', '#ffe27a', 1.0);
+}
+function spawnBoss() {
+  boss = new THREE.Group(); boss.position.set(head.x, 2.6, head.z - 4.2);
+  const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.25, 0.32, 8), emi(0x5a2d9c, { metalness: .8, roughness: .25, emissiveIntensity: .25, flatShading: true }));
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), emi(0xff3fa4, { transparent: true, opacity: .85 }));
+  dome.position.y = .14;
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 14), new THREE.MeshBasicMaterial({ color: 0xff2255 }));
+  core.position.set(0, -0.16, 0.0);
+  boss.add(hull, dome, core);
+  for (let i = 0; i < 12; i++) { const l = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshBasicMaterial({ color: i % 2 ? 0x33e0ff : 0xff3fa4 }));
+    const a = i / 12 * Math.PI * 2; l.position.set(Math.cos(a) * 1.15, -0.05, Math.sin(a) * 1.15); hull.add(l); }
+  const barBg = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.08), new THREE.MeshBasicMaterial({ color: 0x220011, transparent: true, opacity: .7, depthWrite: false }));
+  const bar = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.08), new THREE.MeshBasicMaterial({ color: 0xff3355 }));
+  barBg.position.y = .7; bar.position.set(0, .7, .001); boss.add(barBg, bar);
+  const hb = new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 8), new THREE.MeshBasicMaterial({ visible: false })); hb.scale.y = .45; boss.add(hb);
+  boss.userData = { hp: 25, max: 25, t: 0, hull, core, bar, hb, fireT: 2, flash: 0, base: boss.position.clone() };
+  addShoot(hb, 'boss', boss); scene.add(boss); sfx.boss(); lastKey = '';
+  popup(new THREE.Vector3(head.x, 2.0, head.z - 2.5), 'KAPAL INDUK DATANG!', '#ff5577', 1.4);
+}
+function fireProj(from) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 10), new THREE.MeshBasicMaterial({ color: 0xff3344 }));
+  const h = new THREE.Mesh(new THREE.SphereGeometry(0.14, 14, 10), new THREE.MeshBasicMaterial({ color: 0xff0033, transparent: true, opacity: .35, blending: THREE.AdditiveBlending, depthWrite: false }));
+  m.add(h); m.position.copy(from);
+  m.userData.vel = head.clone().sub(from).normalize().multiplyScalar(1.5);
+  addShoot(m, 'proj', m); scene.add(m); projs.push(m); tone(300, .25, 'sawtooth', .08, .5);
+}
+function removeProj(p) { if (!projs.includes(p)) return; scene.remove(p); projs.splice(projs.indexOf(p), 1); remShoot(p); }
+
+// ---------- State ----------
+let state = 'idle', score = 0, elapsed = 0, lives = LIVES, streak = 0, kills = 0, portalsClosed = 0, shots = 0, hits = 0;
+let portalT = 0, orbT = 0, bossSpawned = false, canStart = true, newRecord = false, victory = false;
+let best = 0; try { best = +localStorage.getItem('invasi_best') || 0; } catch (e) {}
+const mult = () => Math.min(5, 1 + Math.floor(streak / 4));
+let lastKey = '';
+function drawBoard() {
+  const remain = Math.max(0, Math.ceil(DURATION - elapsed));
+  const key = [state, score, remain, lives, mult(), best, !!boss, boss?.userData.hp].join('|'); if (key === lastKey) return; lastKey = key;
+  const { ctx, c } = board, W = c.width, H = c.height; ctx.clearRect(0, 0, W, H);
+  glass(ctx, W, H, 'rgba(255,120,220,.85)');
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffb3ec'; ctx.font = `600 32px ${FONT}`; ctx.fillText(EVENT_NAME + '  ·  INVASI PORTAL', W / 2, 52);
+  if (state === 'playing') {
+    ctx.font = `600 36px ${FONT}`; ctx.fillStyle = '#c9cfe6';
+    ctx.fillText('WAKTU', 210, 120); ctx.fillText('SKOR', W / 2, 120); ctx.fillText('NYAWA', W - 210, 120);
+    ctx.fillStyle = remain <= 10 ? '#ff5577' : '#7dffc0'; ctx.font = `700 100px ${FONT}`; ctx.fillText(remain, 210, 225);
+    ctx.fillStyle = '#fff'; ctx.font = `700 130px ${FONT}`; ctx.fillText(score, W / 2, 230);
+    ctx.fillStyle = '#ff4d8d'; ctx.font = `64px ${FONT}`; ctx.fillText('♥'.repeat(lives) + '♡'.repeat(Math.max(0, LIVES - lives)), W - 210, 225);
+    const m = mult();
+    if (boss) { ctx.fillStyle = '#ff5577'; ctx.font = `700 56px ${FONT}`; ctx.fillText(`BOSS  ${boss.userData.hp}/${boss.userData.max}`, W / 2, 350); }
+    else { ctx.fillStyle = m > 1 ? '#ffe27a' : 'rgba(255,255,255,.4)'; ctx.font = `700 52px ${FONT}`; ctx.fillText(m > 1 ? `COMBO x${m}` : 'Tutup portal = +100', W / 2, 350); }
+    ctx.fillStyle = 'rgba(255,255,255,.12)'; rr(ctx, 140, 420, W - 280, 22, 11); ctx.fill();
+    const gr = ctx.createLinearGradient(140, 0, W - 140, 0); gr.addColorStop(0, '#ff3fa4'); gr.addColorStop(1, '#7b5cff');
+    ctx.fillStyle = gr; rr(ctx, 140, 420, Math.max(22, (W - 280) * remain / DURATION), 22, 11); ctx.fill();
+  } else {
+    ctx.fillStyle = '#fff'; ctx.font = `700 92px ${FONT}`;
+    ctx.fillText(state === 'over' ? (victory ? 'MENANG!  ' + score : 'SKOR  ' + score) : 'INVASI PORTAL', W / 2, 140);
+    ctx.font = `600 36px ${FONT}`;
+    if (state === 'over') {
+      const acc = shots ? Math.round(hits / shots * 100) : 0;
+      ctx.fillStyle = newRecord ? '#ffe27a' : '#c9cfe6';
+      ctx.fillText((newRecord ? '★ REKOR BARU ★   ' : `Rekor ${best}   `) + `Musuh ${kills} · Portal ${portalsClosed} · Akurasi ${acc}%`, W / 2, 222);
+    } else { ctx.fillStyle = '#c9cfe6'; ctx.fillText('Rekor hari ini: ' + best, W / 2, 222); }
+    ctx.fillStyle = '#fff'; ctx.font = `34px ${FONT}`;
+    ctx.fillText('Tembak: TRIGGER / pinch  ·  Tembak portal 5x untuk menutupnya', W / 2, 300);
+    ctx.fillText('Bola emas = gelombang kejut  ·  Lihat radar di sekitar badanmu', W / 2, 348);
+    ctx.fillStyle = '#ff9be8'; ctx.font = `700 40px ${FONT}`;
+    ctx.fillText(canStart ? 'Tembak target untuk ' + (state === 'over' ? 'main lagi' : 'mulai') : '…', W / 2, 425);
+  }
+  board.tex.needsUpdate = true;
+}
+
+function clearAll() {
+  for (const e of [...enemies]) { scene.remove(e); remShoot(e.userData.hb); } enemies.length = 0;
+  for (const p of [...portals]) { scene.remove(p); remShoot(p.userData.hb); } portals.length = 0;
+  for (const p of [...projs]) removeProj(p);
+  if (orb) { scene.remove(orb); remShoot(orb.userData.hb); orb = null; }
+  if (boss) { scene.remove(boss); remShoot(boss.userData.hb); boss = null; }
+}
+function startGame() {
+  clearAll(); state = 'playing'; score = 0; elapsed = 0; lives = LIVES; streak = 0; kills = 0; portalsClosed = 0; shots = 0; hits = 0;
+  portalT = .6; orbT = R.randFloat(14, 20); bossSpawned = false; victory = false; newRecord = false; canStart = false; startT.visible = false; lastKey = '';
+  sfx.start();
+}
+function endGame(win = false) {
+  state = 'over'; victory = win;
+  for (const e of [...enemies]) killEnemy(e, false);
+  for (const p of [...portals]) closePortal(p, false);
+  for (const p of [...projs]) removeProj(p);
+  if (orb) { scene.remove(orb); remShoot(orb.userData.hb); orb = null; }
+  if (boss && !win) { remShoot(boss.userData.hb); boss.userData.leaving = true; boss.userData.t = 0; }
+  if (score > best) { best = score; newRecord = true; try { localStorage.setItem('invasi_best', best); } catch (e) {} }
+  win ? sfx.win() : sfx.over(); lastKey = '';
+  setTimeout(() => { canStart = true; startT.visible = true; lastKey = ''; }, 2500);
+}
+function damage() {
+  lives--; streak = 0; hurtT = .5; flashCol = 0xff0022; hurtSphere.material.color.setHex(flashCol); sfx.hurt();
+  for (const g of guns) haptic(g, 1, 250);
+  if (lives <= 0) endGame(false);
+}
+
+// ---------- Senjata ----------
+const ray = new THREE.Raycaster(); ray.far = 60;
+function haptic(o, s, ms) { try { o?.source?.gamepad?.hapticActuators?.[0]?.pulse(s, ms); } catch (e) {} }
+const guns = [0, 1].map(i => {
+  const c = renderer.xr.getController(i); scene.add(c);
+  const color = i ? 0xff7ae0 : 0x5ee7ff;
+  const ptr = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]), new THREE.LineBasicMaterial({ color, transparent: true, opacity: .35 }));
+  ptr.scale.z = 4; c.add(ptr);
+  const gun = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.045, 0.14), new THREE.MeshStandardMaterial({ color: 0x1d1f33, metalness: .8, roughness: .3 }));
+  body.position.z = 0.02; const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.05, 12), new THREE.MeshBasicMaterial({ color }));
+  tip.rotation.x = Math.PI / 2; tip.position.z = -0.07; gun.add(body, tip); c.add(gun);
+  const o = { c, color, source: null, gun };
+  c.addEventListener('connected', e => { o.source = e.data; gun.visible = !e.data.hand; });
+  c.addEventListener('disconnected', () => { o.source = null; });
+  c.addEventListener('selectstart', () => {
+    const p = new THREE.Vector3(), q = new THREE.Quaternion(); c.getWorldPosition(p); c.getWorldQuaternion(q);
+    fire(p, new THREE.Vector3(0, 0, -1).applyQuaternion(q), color, o);
+  });
+  return o;
+});
+function fire(origin, dir, color, g) {
+  initAudio(); sfx.laser(); haptic(g, .3, 20);
+  ray.set(origin, dir);
+  const list = startT.visible && canStart ? [...shoot, startHit, ...(renderer.xr.isPresenting ? [exitHit] : [])] : shoot;
+  const hit = ray.intersectObjects(list, false)[0];
+  beam(origin.clone().addScaledVector(dir, .08), hit ? hit.point : origin.clone().addScaledVector(dir, 30), color);
+  if (!hit) { if (state === 'playing') { shots++; streak = 0; } return; }
+  const kind = hit.object.userData.kind, ref = hit.object.userData.ref;
+  if (kind === 'exit') { exitXR(); return; }
+  if (kind === 'start') { explode(startT.position, 0xff3fa4, 24); startGame(); return; }
+  if (state !== 'playing') return;
+  shots++; hits++;
+  if (kind === 'enemy') {
+    ref.userData.hp--;
+    if (ref.userData.hp > 0) { sfx.hit(); haptic(g, .6, 40); ref.userData.flash = .12; ref.position.addScaledVector(dir, .3); return; }
+    streak++; kills++; killEnemy(ref, true); sfx.kill(); haptic(g, .9, 60);
+  } else if (kind === 'portal') {
+    ref.userData.hp--; ref.userData.flash = .15; sfx.hit(); haptic(g, .5, 30);
+    if (ref.userData.hp <= 0) { streak++; portalsClosed++; closePortal(ref, true); haptic(g, 1, 120); }
+  } else if (kind === 'orb') {
+    remShoot(ref.userData.hb); scene.remove(ref); orb = null; streak++; shockwave(ref.position); haptic(g, 1, 200);
+  } else if (kind === 'proj') {
+    removeProj(ref); explode(ref.position, 0xff4444, 10, .035, 2); score += 5; sfx.hit();
+  } else if (kind === 'boss') {
+    const b = ref.userData; b.hp--; b.flash = .1; sfx.hit(); haptic(g, .7, 50);
+    explode(hit.point, 0xff3fa4, 6, .03, 2);
+    b.bar.scale.x = Math.max(0.001, b.hp / b.max); b.bar.position.x = -0.8 * (1 - b.bar.scale.x);
+    if (b.hp <= 0) {
+      remShoot(b.hb); b.dying = true; const dead = boss, pos = boss.position.clone();
+      const pts = 500 * mult(); score += pts; popup(pos.clone().add(new THREE.Vector3(0, .8, 0)), 'KAPAL INDUK HANCUR! +' + pts, '#ffe27a', 1.6);
+      endGame(true);
+      for (let i = 0; i < 6; i++) setTimeout(() => { explode(pos.clone().add(new THREE.Vector3().randomDirection().multiplyScalar(.7)), [0xff3fa4, 0xffe066, 0x7b5cff][i % 3], 40, .07, 5); boom(.6, .8, 1800); }, i * 140);
+      setTimeout(() => { scene.remove(dead); if (boss === dead) boss = null; }, 750);
+    }
+  }
+}
+// mode tes laptop: klik = tembak dari kamera
+const mouse = new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown', ev => {
+  if (renderer.xr.isPresenting) return;
+  mouse.set(ev.clientX / innerWidth * 2 - 1, -ev.clientY / innerHeight * 2 + 1);
+  ray.setFromCamera(mouse, camera); fire(ray.ray.origin.clone(), ray.ray.direction.clone(), 0x5ee7ff, null);
+});
+
+// ---------- Radar di sekitar badan ----------
+const radar = new THREE.Group(); scene.add(radar);
+radar.add(new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.006, 6, 64), new THREE.MeshBasicMaterial({ color: 0x5ee7ff, transparent: true, opacity: .45 })));
+radar.children[0].rotation.x = Math.PI / 2;
+const marks = [];
+for (let i = 0; i < 16; i++) {
+  const m = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.06, 4), new THREE.MeshBasicMaterial({ color: 0xff3355 }));
+  m.rotation.x = Math.PI / 2; const holder = new THREE.Group(); holder.add(m); m.position.z = -0.55; holder.visible = false; radar.add(holder); marks.push(holder);
+}
+
+// ---------- Mulai sesi XR (MR / VR) ----------
+const ov = document.getElementById('ov'), msg = document.getElementById('msg');
+const btnAR = document.getElementById('btnAR'), btnVR = document.getElementById('btnVR');
+async function checkSupport() {
+  if (!navigator.xr) { msg.textContent = 'WebXR tidak tersedia di browser ini. Mode tes laptop: klik target di layar.'; return; }
+  const [ar, vr] = await Promise.all([navigator.xr.isSessionSupported('immersive-ar').catch(() => false), navigator.xr.isSessionSupported('immersive-vr').catch(() => false)]);
+  btnAR.disabled = !ar; btnVR.disabled = !vr;
+  msg.textContent = ar ? 'Siap! Mixed Reality memakai kamera passthrough Quest.' : vr ? 'Mixed Reality tidak tersedia, gunakan mode VR.' : 'Perangkat XR tidak terdeteksi. Mode tes laptop: klik target di layar.';
+}
+checkSupport();
+async function startXR(kind) {
+  initAudio();
+  try {
+    const s = await navigator.xr.requestSession(kind === 'ar' ? 'immersive-ar' : 'immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'] });
+    xrKind = kind; applyEnv();
+    s.addEventListener('end', () => { xrKind = null; applyEnv(); ov.classList.remove('hide'); if (state === 'playing') endGame(false); });
+    await renderer.xr.setSession(s); ov.classList.add('hide');
+  } catch (e) { msg.textContent = 'Gagal memulai: ' + e.message; xrKind = null; applyEnv(); }
+}
+btnAR.onclick = () => startXR('ar'); btnVR.onclick = () => startXR('vr');
+
+// ---------- Loop ----------
+const clock = new THREE.Clock(); let now = 0, tick = -1;
+const tmp = new THREE.Vector3(), side = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05); now += dt;
+  camera.getWorldPosition(head); camera.getWorldQuaternion(camQ);
+
+  if (state === 'playing') {
+    elapsed += dt;
+    const prog = Math.min(1, elapsed / DURATION), remain = Math.ceil(DURATION - elapsed);
+    if (remain <= 5 && remain > 0 && remain !== tick) { tick = remain; tone(1000, .05, 'square', .1); }
+    if (!bossSpawned && remain <= BOSS_AT) { bossSpawned = true; spawnBoss(); }
+    const maxPortals = boss ? 1 : 1 + Math.floor(prog * 3.2);
+    portalT -= dt; if (portalT <= 0 && portals.length < maxPortals) { spawnPortal(); portalT = R.lerp(4.5, 2.2, prog); }
+    orbT -= dt; if (orbT <= 0 && !orb) { spawnOrb(); orbT = R.randFloat(16, 22); }
+    if (elapsed >= DURATION) endGame(false);
+  }
+
+  // portal
+  for (const p of [...portals]) {
+    const u = p.userData; u.t += dt;
+    p.scale.setScalar(Math.min(1, u.t / .6) * (u.flash > 0 ? 1.12 : 1)); if (u.flash > 0) u.flash -= dt;
+    u.disc.rotation.z -= dt * 2.5; u.ring2.rotation.z += dt * 1.2; p.lookAt(head);
+    if (state === 'playing') { u.spawnT -= dt; if (u.spawnT <= 0 && enemies.length < 14) { spawnEnemy(p.position.clone()); u.spawnT = u.rate; } }
+    if (u.t > u.life) closePortal(p, false);
+  }
+  for (const p of [...closing]) { p.userData.closing += dt; p.scale.setScalar(Math.max(.001, 1 - p.userData.closing / .4)); p.userData.disc.rotation.z -= dt * 8;
+    if (p.userData.closing > .4) { scene.remove(p); closing.splice(closing.indexOf(p), 1); } }
+
+  // musuh
+  for (const e of [...enemies]) {
+    const u = e.userData; u.t += dt; if (u.spin) u.spin.rotation.y += dt * 3;
+    tmp.copy(head).sub(e.position); const dist = tmp.length(); tmp.normalize();
+    e.position.addScaledVector(tmp, u.speed * dt);
+    if (u.type === 'fast') { side.crossVectors(tmp, up).normalize(); e.position.addScaledVector(side, Math.cos(u.t * 3 + u.phase) * 1.4 * dt); }
+    else e.position.y += Math.sin(u.t * 2 + u.phase) * .2 * dt;
+    e.lookAt(head); e.scale.setScalar(u.flash > 0 ? 1.25 : Math.min(1, u.t / .35)); if (u.flash > 0) u.flash -= dt;
+    if (dist < 0.75) { killEnemy(e, false); if (state === 'playing') damage(); }
+  }
+  // proyektil boss
+  for (const p of [...projs]) { p.position.addScaledVector(p.userData.vel, dt); p.rotation.y += dt * 5;
+    if (p.position.distanceTo(head) < .35) { removeProj(p); explode(p.position, 0xff3344, 14); if (state === 'playing') damage(); }
+    else if (p.position.distanceTo(head) > 12) removeProj(p); }
+  // orb
+  if (orb) { const u = orb.userData; u.t += dt; u.core.rotation.y += dt * 2; u.core.rotation.x += dt; u.halo.scale.setScalar(1 + Math.sin(now * 6) * .15);
+    orb.position.y += Math.sin(now * 2) * .002; if (u.t > 9) { remShoot(u.hb); scene.remove(orb); orb = null; } }
+  // boss
+  if (boss) {
+    const u = boss.userData; u.t += dt;
+    if (u.dying) { boss.rotation.z += dt * 2; boss.position.y -= dt * .8; }
+    else if (u.leaving) { boss.position.y += dt * 1.5; boss.position.z -= dt * 3; if (u.t > 6 || boss.position.y > 8) { scene.remove(boss); boss = null; } }
+    else {
+      boss.position.set(u.base.x + Math.sin(u.t * .6) * 1.6, u.base.y + Math.sin(u.t * 1.3) * .2, u.base.z);
+      if (u.t < 1.5) boss.position.y = u.base.y + (1.5 - u.t) * 3;
+      u.hull.rotation.y += dt * .8; u.core.material.color.setHex(u.flash > 0 ? 0xffffff : 0xff2255); if (u.flash > 0) u.flash -= dt;
+      if (state === 'playing') { u.fireT -= dt; if (u.fireT <= 0 && u.hp > 0) { fireProj(boss.position.clone().add(new THREE.Vector3(0, -.2, .3))); u.fireT = R.randFloat(1.2, 2.0); } }
+    }
+    if (boss) { boss.children[3].lookAt(head); boss.children[4].lookAt(head); }
+  }
+  // efek
+  for (let i = fx.length - 1; i >= 0; i--) {
+    const f = fx[i], u = f.userData; u.t += dt; const k = u.t / u.life;
+    if (u.phys) { u.v.multiplyScalar(1 - 1.5 * dt); f.position.addScaledVector(u.v, dt); f.rotation.x += u.spin * dt; f.rotation.y += u.spin * dt; }
+    if (u.grow) f.scale.setScalar(.1 + k * u.grow);
+    if (u.rise) f.position.y += u.rise * dt;
+    if (u.fade) f.material.opacity = Math.max(0, 1 - k);
+    if (u.t > u.life) { scene.remove(f); if (u.tex) u.tex.dispose(); fx.splice(i, 1); }
+  }
+  // radar
+  radar.position.set(head.x, head.y - 0.5, head.z);
+  const targets = [...enemies, ...portals, ...projs, ...(boss && !boss.userData.leaving ? [boss] : [])];
+  marks.forEach((m, i) => {
+    const t = targets[i]; if (!t || state !== 'playing') { m.visible = false; return; }
+    m.visible = true; const dx = t.position.x - head.x, dz = t.position.z - head.z;
+    m.rotation.y = Math.atan2(-dx, -dz);
+    const col = portals.includes(t) ? 0xb48cff : boss === t ? 0xffe066 : Math.hypot(dx, dz) < 1.6 ? 0xff2244 : 0xff9944;
+    m.children[0].material.color.setHex(col);
+  });
+  // kilat layar
+  if (hurtT > 0) { hurtT -= dt; hurtSphere.material.opacity = Math.max(0, hurtT) * .9; if (scene.background) scene.background.lerpColors(BG, new THREE.Color(flashCol === 0xff0022 ? 0x550011 : 0x554400), Math.max(0, hurtT) * 2); }
+  else { hurtSphere.material.opacity = 0; if (scene.background) scene.background.copy(BG); }
+
+  exitT.visible = startT.visible && renderer.xr.isPresenting;
+  if (exitT.visible) { exitT.position.set(0.95, 1.15, -1.9); exitT.lookAt(head); }
+  if (startT.visible) { startT.rotation.z += dt * .8; startT.position.y = 1.3 + Math.sin(now * 2) * .04; startT.lookAt(head); }
+  drawBoard();
+  renderer.render(scene, camera);
+});
+document.fonts?.ready?.then(() => { lastKey = ''; });
+</script>
+</body>
+</html>
