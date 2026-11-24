@@ -7,26 +7,29 @@ import * as THREE from 'three';
 const W = 1.6, H = W * 552 / 1146;          // ukuran logo di dunia (meter)
 const DIST = 2.2;                           // jarak dari mata pemain
 const DUR = 3.9;                            // total durasi (detik)
-const C_LIGHT = 0xd6e4f7, C_TEXT = 0xfaf9f5, C_EDGE = 0x2a5bb8;
+const C_LIGHT = 0xffffff, C_TEXT = 0xf4f6ff, C_EDGE = 0x5b3fb8; // bagian bergradien memakai warna dari tekstur
 
 const clamp01 = x => Math.min(1, Math.max(0, x));
 const seg = (t, a, d) => clamp01((t - a) / d);
 const outCubic = x => 1 - Math.pow(1 - x, 3);
 const outBack = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
 
-function maskTexture(src) {
+const GRAD = ['horizon', 'sun', 'reflect', 'ray-center', 'ray-short', 'ray-long']; // diberi gradien merek seperti judul menu
+function maskTexture(src, grad) {
   // mask PNG hanya berisi alpha; ubah jadi gambar putih ber-alpha supaya bisa diwarnai lewat material.color
   const c = document.createElement('canvas'); c.width = 1146; c.height = 552;
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
   const img = new Image();
-  img.onload = () => { const x = c.getContext('2d'); x.drawImage(img, 0, 0, c.width, c.height); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); tex.needsUpdate = true; };
+  img.onload = () => { const x = c.getContext('2d'); x.drawImage(img, 0, 0, c.width, c.height); x.globalCompositeOperation = 'source-in';
+    if (grad) { const g = x.createLinearGradient(0, 0, c.width, 0); g.addColorStop(0, '#ff7ad1'); g.addColorStop(.5, '#a48cff'); g.addColorStop(1, '#5ee7ff'); x.fillStyle = g; } else x.fillStyle = '#fff';
+    x.fillRect(0, 0, c.width, c.height); tex.needsUpdate = true; };
   img.src = src;
   return tex;
 }
 function glowTexture() {
   const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
   const g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
-  g.addColorStop(0, 'rgba(214,228,247,1)'); g.addColorStop(.25, 'rgba(120,170,255,.55)'); g.addColorStop(.6, 'rgba(60,90,220,.15)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  g.addColorStop(0, 'rgba(255,170,230,1)'); g.addColorStop(.25, 'rgba(255,122,209,.55)'); g.addColorStop(.6, 'rgba(164,140,255,.18)'); g.addColorStop(1, 'rgba(0,0,0,0)');
   x.fillStyle = g; x.fillRect(0, 0, 256, 256);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
@@ -36,7 +39,7 @@ export function pasangLogo3D(renderer, scene) {
   if (!M) { console.warn('logo3d: mask logo tidak ada (loader.js belum dimuat)'); return; }
   renderer.localClippingEnabled = true;     // hanya berlaku untuk material yang memakai clippingPlanes (matahari)
 
-  const tex = {}; for (const k in M) tex[k] = maskTexture(M[k]);
+  const tex = {}; for (const k in M) tex[k] = maskTexture(M[k], GRAD.includes(k));
   const root = new THREE.Group(); root.name = 'logoUVERS3D';
   const mats = [];
   const plane = new THREE.PlaneGeometry(W, H);
@@ -59,7 +62,7 @@ export function pasangLogo3D(renderer, scene) {
   // pelat navy lembut di belakang logo (seperti latar layar loading) supaya logo selalu terbaca
   const plateC = document.createElement('canvas'); plateC.width = 512; plateC.height = 320;
   { const x = plateC.getContext('2d'); const g = x.createRadialGradient(256, 160, 40, 256, 160, 250);
-    g.addColorStop(0, 'rgba(0,5,33,.92)'); g.addColorStop(.62, 'rgba(0,5,33,.85)'); g.addColorStop(1, 'rgba(0,5,33,0)');
+    g.addColorStop(0, 'rgba(14,10,36,.93)'); g.addColorStop(.62, 'rgba(5,6,15,.86)'); g.addColorStop(1, 'rgba(5,6,15,0)');
     x.fillStyle = g; x.fillRect(0, 0, 512, 320); }
   const plateTex = new THREE.CanvasTexture(plateC); plateTex.colorSpace = THREE.SRGBColorSpace;
   const plateMat = new THREE.MeshBasicMaterial({ map: plateTex, transparent: true, opacity: 0, depthTest: false, depthWrite: false });
