@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lengan Robot VR</title>
+<meta name="description" content="Lengan Robot: lengan 4 servo dengan inverse kinematics, pindahkan kubus ke kotak sewarna di VR.">
+<meta name="theme-color" content="#05060f">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="tema.css">
+<style>
+  :root{--accent:#c084fc;--a1:#c084fc;--a2:#6366f1}
+</style>
+<script type="importmap">
+{ "imports": { "three": "./three.module.min.js" } }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<script src="loader.js"></script>
+<script src="tema.js" defer></script>
+<div class="xr-aura" aria-hidden="true"><i></i><i></i><i></i></div>
+<header class="xr-top">
+  <div class="xr-left"><a class="xr-back" href="./">← Menu</a>
+    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span>Lengan Robot</span></div></div></div>
+  <div class="xr-pill" id="xrStatus">Memeriksa perangkat…</div>
+</header>
+<div id="ov">
+  <div class="xr-head"><div class="xr-icon">🦾</div><div><div class="tags"><span class="tag hot">Simulasi</span><span class="tag">Robotika</span><span class="tag">Inverse Kinematics</span></div><h1>Lengan Robot</h1></div></div>
+  <p>Pegang bola target, lengan 4 servo mengikutinya. Komputer menghitung sudut tiap servo (inverse kinematics). Misi: pindahkan 3 kubus ke kotak sewarna.</p>
+  <div class="btns"><button class="btn primary" id="btnVR" disabled>Masuk VR <span class="arw">→</span></button></div>
+  <div id="msg">Memeriksa perangkat…</div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+
+// ====== PENGATURAN (silakan ubah) ======
+const HEADER = 'UVERS · Prodi TIF · ME · IE';
+const H0 = 0.09, L2 = 0.20, L3 = 0.18, L4 = 0.13; // tinggi bahu, lengan atas, lengan bawah, pergelangan→ujung capit (m)
+const SERVO_SPEED = 150;  // kecepatan servo maksimum (derajat/detik)
+// =======================================
+
+// ---------- Gaya visual bersama (font, panel kaca, angka melayang) ----------
+await Promise.race([document.fonts.load("700 40px 'Space Grotesk'"), new Promise(r => setTimeout(r, 1500))]).catch(() => {});
+const FONT = "'Space Grotesk', system-ui, sans-serif";
+function glass(ctx, W, H, accent, rad = 40) {
+  const g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, 'rgba(38,34,78,.82)'); g.addColorStop(1, 'rgba(8,12,30,.82)');
+  ctx.fillStyle = g; rr(ctx, 6, 6, W - 12, H - 12, rad); ctx.fill();
+  ctx.save(); ctx.shadowColor = accent; ctx.shadowBlur = 24; ctx.strokeStyle = accent; ctx.lineWidth = 5; rr(ctx, 6, 6, W - 12, H - 12, rad); ctx.stroke(); ctx.restore();
+  const hl = ctx.createLinearGradient(0, 0, 0, H * .45); hl.addColorStop(0, 'rgba(255,255,255,.14)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = hl; rr(ctx, 14, 14, W - 28, H * .42, Math.max(8, rad - 8)); ctx.fill();
+}
+const __pops = [];
+function popup(pos, text, color = '#ffffff', size = .3) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128; const x = c.getContext('2d');
+  x.font = `700 84px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.lineWidth = 10; x.strokeStyle = 'rgba(0,0,0,.55)'; x.strokeText(text, 256, 64); x.fillStyle = color; x.fillText(text, 256, 64);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  s.position.copy(pos); s.scale.set(size, size / 4, 1); s.renderOrder = 998; scene.add(s); __pops.push({ s, tex, t0: performance.now() });
+}
+function updatePopups() {
+  const now = performance.now();
+  for (let i = __pops.length - 1; i >= 0; i--) { const p = __pops[i], k = (now - p.t0) / 900;
+    p.s.position.y += 0.004; p.s.material.opacity = Math.max(0, 1 - k * k);
+    if (k >= 1) { scene.remove(p.s); p.tex.dispose(); p.s.material.dispose(); __pops.splice(i, 1); } }
+}
+
+
+
+const R = THREE.MathUtils, D2R = Math.PI / 180;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.xr.enabled = true;
+renderer.xr.setReferenceSpaceType('local-floor');
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+{
+  const ov = document.getElementById('ov'), msg = document.getElementById('msg'), btnVR = document.getElementById('btnVR');
+  const laptop = 'Mode tes laptop: seret bola biru, roda mouse = naik/turun, Spasi = capit.';
+  (async () => {
+    if (!navigator.xr) { msg.textContent = 'WebXR tidak tersedia. ' + laptop; return; }
+    const ok = await navigator.xr.isSessionSupported('immersive-vr').catch(() => false);
+    btnVR.disabled = !ok;
+    msg.textContent = ok ? 'Siap! Tekan Masuk VR, lalu pakai headset.' : 'Headset tidak terdeteksi. ' + laptop;
+  })();
+  btnVR.onclick = async () => {
+    try {
+      const s = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] });
+      s.addEventListener('end', () => ov.classList.remove('hide'));
+      await renderer.xr.setSession(s); ov.classList.add('hide');
+    } catch (e) { msg.textContent = 'Gagal memulai: ' + e.message; }
+  };
+}
+
+const scene = new THREE.Scene();
+import('./logo3d.js').then(m => m.pasangLogo3D(renderer, scene)).catch(e => console.warn('logo3d', e));
+scene.background = new THREE.Color(0x120f1c);
+scene.fog = new THREE.Fog(0x120f1c, 8, 26);
+const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.02, 100);
+camera.position.set(0.25, 1.5, 0.35); camera.lookAt(0, 0.82, -0.62);
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+// ---------- Ruangan & meja ----------
+const TY = 0.78;                                  // tinggi permukaan meja
+const BASE = new THREE.Vector3(0, TY, -0.62);     // dudukan lengan
+const TW = 1.3, TD = 0.9, TC = new THREE.Vector3(0, TY, -0.66); // ukuran & pusat meja
+scene.add(new THREE.HemisphereLight(0xeae4ff, 0x262036, 1.3));
+const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(0.8, 3, 0.4);
+key.castShadow = true; key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -1, right: 1, top: 1, bottom: -1, near: .5, far: 6 });
+key.target.position.copy(BASE); scene.add(key, key.target);
+{
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x1a1726, roughness: 1 }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(TW, 0.04, TD), new THREE.MeshStandardMaterial({ color: 0x2b2740, roughness: .7 }));
+  top.position.copy(TC).setY(TY - 0.02); top.receiveShadow = true; top.castShadow = true; scene.add(top);
+  const legM = new THREE.MeshStandardMaterial({ color: 0x15131f, metalness: .4 });
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, TY - 0.04, 0.05), legM);
+    leg.position.set(TC.x + sx * (TW / 2 - 0.06), (TY - 0.04) / 2, TC.z + sz * (TD / 2 - 0.06)); scene.add(leg);
+  }
+  const edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(TW + .005, 0.041, TD + .005)), new THREE.LineBasicMaterial({ color: 0xa066ff }));
+  edge.position.copy(top.position); scene.add(edge);
+  // jangkauan lengan di meja
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.47, 0.475, 64, 1, -Math.PI, Math.PI), new THREE.MeshBasicMaterial({ color: 0xa066ff, transparent: true, opacity: .35, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; ring.position.copy(BASE).setY(TY + 0.001); scene.add(ring);
+  for (let i = -5; i <= 5; i++) {
+    const h = 2 + (i * 7919 % 5) * .3;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(1.4, h, .4), new THREE.MeshStandardMaterial({ color: 0x221d33 }));
+    b.position.set(i * 1.5, h / 2, -7); scene.add(b);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(1.2, .04, .02), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xa066ff : 0xff3fa4 }));
+    strip.position.set(i * 1.5, h - .2, -6.79); scene.add(strip);
+  }
+}
+
+// ---------- Panel teks ----------
+function makePanel(w, h, cw, ch) {
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const ctx = c.getContext('2d'); const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+  return { mesh, ctx, tex, c };
+}
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function wrap(ctx, text, x, y, maxW, lh) {
+  const words = text.split(' '); let line = '';
+  for (const w of words) { const t = line ? line + ' ' + w : w;
+    if (ctx.measureText(t).width > maxW && line) { ctx.fillText(line, x, y); line = w; y += lh; } else line = t; }
+  if (line) ctx.fillText(line, x, y); return y;
+}
+
+
+
+const header = makePanel(2.4, 0.4, 1300, 216);
+header.mesh.position.set(0, 2.35, -3.6); header.mesh.lookAt(0, 1.6, 0); scene.add(header.mesh);
+{ const { ctx, c } = header; glass(ctx, c.width, c.height, 'rgba(160,102,255,.9)', 36);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#fff'; ctx.font = `bold 78px ${FONT}`; ctx.fillText('LENGAN ROBOT 4 SERVO', c.width / 2, 80);
+  ctx.fillStyle = '#cdb6ff'; ctx.font = `42px ${FONT}`; ctx.fillText(HEADER, c.width / 2, 158); header.tex.needsUpdate = true; }
+const info = makePanel(0.9, 1.06, 880, 1040);
+info.mesh.position.set(0.92, 1.38, -0.78); info.mesh.lookAt(0, 1.45, 0.1); scene.add(info.mesh);
+
+// ---------- Lengan (hierarki: dasar → bahu → siku → pergelangan → capit) ----------
+const SC = [0xff3fa4, 0xffb020, 0x33ddff, 0x7dffa0];  // warna tiap servo (sama dengan panel)
+const matArm = new THREE.MeshStandardMaterial({ color: 0xe9e6f5, metalness: .25, roughness: .35 });
+const matDark = new THREE.MeshStandardMaterial({ color: 0x24212f, metalness: .4, roughness: .5 });
+function servoBox(color) { // badan servo RDS3225 sederhana
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.042, 0.022), matDark); b.castShadow = true; g.add(b);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.003, 8, 28), new THREE.MeshBasicMaterial({ color })); ring.rotation.y = Math.PI / 2; ring.position.x = 0.022; g.add(ring);
+  return g;
+}
+const j1 = new THREE.Group(); j1.position.copy(BASE); scene.add(j1);
+{
+  const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.025, 40), matDark); plate.position.y = 0.0125; plate.castShadow = true; scene.add(plate); plate.position.add(BASE);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.066, 0.004, 8, 48), new THREE.MeshBasicMaterial({ color: SC[0] })); ring.rotation.x = Math.PI / 2; ring.position.copy(BASE).setY(TY + 0.027); scene.add(ring);
+  const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.055, 0.05, 32), matArm); turret.position.y = 0.05; turret.castShadow = true; j1.add(turret);
+  for (const s of [-1, 1]) { const ear = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.07, 0.05), matArm); ear.position.set(s * 0.032, H0 - 0.012, 0); ear.castShadow = true; j1.add(ear); }
+}
+const j2 = new THREE.Group(); j2.position.set(0, H0, 0); j1.add(j2);
+const j3 = new THREE.Group(); j3.position.set(0, 0, -L2); j2.add(j3);
+const j4 = new THREE.Group(); j4.position.set(0, 0, -L3); j3.add(j4);
+function link(parent, len, w) {
+  for (const s of [-1, 1]) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.006, w, len), matArm); m.position.set(s * 0.026, 0, -len / 2); m.castShadow = true; parent.add(m); }
+  const brace = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.008, len * .5), matArm); brace.position.set(0, -w / 2 + 0.004, -len / 2); parent.add(brace);
+}
+link(j2, L2, 0.03); link(j3, L3, 0.026);
+[j2, j3, j4].forEach((j, i) => { const s = servoBox(SC[i + 1]); j.add(s); });
+// capit
+const tipLocal = new THREE.Vector3(0, 0, -L4);
+const fingers = [];
+{
+  const palm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.05), matArm); palm.position.set(0, 0, -0.055); palm.castShadow = true; j4.add(palm);
+  const sv = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.03, 0.04), matDark); sv.position.set(0, 0.022, -0.055); j4.add(sv);
+  for (const s of [-1, 1]) {
+    const f = new THREE.Group(); f.position.set(s * 0.02, 0, -0.08); j4.add(f);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.018, 0.065), new THREE.MeshStandardMaterial({ color: 0xa066ff, metalness: .3, roughness: .4 })); m.position.z = -0.025; m.castShadow = true; f.add(m);
+    fingers.push(f);
+  }
+}
+const tipObj = new THREE.Object3D(); tipObj.position.copy(tipLocal).add(new THREE.Vector3(0, 0, 0.02)); j4.add(tipObj); // titik tengah jari = titik genggam
+
+// ---------- Kinematika ----------
+// sudut sendi (radian): yaw, a2 (bahu dari horizontal), a3 (siku relatif, ≤0), a4 (pergelangan relatif)
+// sudut servo (derajat 0–180): S1 = yaw+90, S2 = a2, S3 = a3+180, S4 = a4+90
+const toServo = q => [q[0] / D2R + 90, q[1] / D2R, q[2] / D2R + 180, q[3] / D2R + 90];
+const fromServo = s => [(s[0] - 90) * D2R, s[1] * D2R, (s[2] - 180) * D2R, (s[3] - 90) * D2R];
+const PHIS = []; for (let p = -90; p <= 0; p += 3) PHIS.push(p); for (let p = -93; p >= -180; p -= 3) PHIS.push(p); // utamakan capit menghadap bawah
+// grip dihitung di titik genggam (2 cm sebelum ujung jari)
+const GRIP = L4 - 0.02;
+function ikGrip(p) { return ikLen(p.x - BASE.x, p.y - BASE.y, p.z - BASE.z, GRIP); } // p = posisi dunia titik genggam
+function ikLen(dx, dy, dz, l4) {
+  const yaw = Math.atan2(-dx, -dz), r = Math.hypot(dx, dz), y = dy - H0;
+  for (const phd of PHIS) {
+    const ph = phd * D2R, wr = r - l4 * Math.cos(ph), wy = y - l4 * Math.sin(ph), d = Math.hypot(wr, wy);
+    if (d > L2 + L3 - 1e-4 || d < Math.abs(L2 - L3) + 1e-4) continue;
+    const q = Math.acos(R.clamp((d * d - L2 * L2 - L3 * L3) / (2 * L2 * L3), -1, 1));
+    const a2 = Math.atan2(wy, wr) + Math.atan2(L3 * Math.sin(q), L2 + L3 * Math.cos(q)), a3 = -q, a4 = ph - a2 - a3;
+    if (a2 >= 0 && a2 <= Math.PI && a3 >= -Math.PI && a3 <= 0 && Math.abs(a4) <= Math.PI / 2 && Math.abs(yaw) <= Math.PI / 2) return [yaw, a2, a3, a4];
+  }
+  return null;
+}
+function solve(target) { // kembalikan {q, reach}; bila tak terjangkau, dekati sejauh mungkin
+  let q = ikGrip(target); if (q) return { q, reach: true };
+  const sh = BASE.clone().setY(BASE.y + H0), v = target.clone().sub(sh); let lo = 0, hi = 1, best = null;
+  for (let k = 0; k < 18; k++) { const m = (lo + hi) / 2, p = sh.clone().addScaledVector(v, m), s = ikGrip(p); if (s) { lo = m; best = s; } else hi = m; }
+  return { q: best, reach: false };
+}
+
+// keadaan
+let servo = [90, 90, 90, 90];       // sudut servo saat ini (derajat)
+let servoT = [90, 135, 80, 45];     // sudut tujuan
+let capit = 0, capitT = 0;          // 0 = buka, 1 = tutup
+let mode = 'ik', reach = true, lastInfo = '';
+function terapkan() {
+  const q = fromServo(servo);
+  j1.rotation.y = q[0]; j2.rotation.x = q[1]; j3.rotation.x = q[2]; j4.rotation.x = q[3];
+  const open = 0.022 - capit * 0.015; fingers[0].position.x = -open; fingers[1].position.x = open;
+}
+terapkan();
+
+// ---------- Bola target ----------
+const target = new THREE.Vector3();
+const tMat = new THREE.MeshStandardMaterial({ color: 0x33ddff, emissive: 0x0a4a66, transparent: true, opacity: .75 });
+const tBall = new THREE.Mesh(new THREE.SphereGeometry(0.022, 24, 16), tMat); scene.add(tBall);
+const tHit = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), new THREE.MeshBasicMaterial({ visible: false })); tBall.add(tHit);
+const tRing = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.003, 8, 40), new THREE.MeshBasicMaterial({ color: 0x33ddff })); tBall.add(tRing);
+const shadowDot = new THREE.Mesh(new THREE.CircleGeometry(0.02, 24), new THREE.MeshBasicMaterial({ color: 0x33ddff, transparent: true, opacity: .45 }));
+shadowDot.rotation.x = -Math.PI / 2; scene.add(shadowDot);
+const stalk = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, -1, 0)]), new THREE.LineDashedMaterial({ color: 0x33ddff, dashSize: .01, gapSize: .008, transparent: true, opacity: .7 }));
+scene.add(stalk);
+const gripW = new THREE.Vector3();
+function tipWorld() { j1.updateMatrixWorld(true); return tipObj.getWorldPosition(gripW); }
+function setTarget(p) {
+  target.copy(p); target.y = Math.max(target.y, TY + 0.012);
+  const s = solve(target); reach = s.reach; if (s.q) servoT = toServo(s.q);
+}
+function placeTarget() { // letakkan bola di posisi ujung capit sekarang
+  target.copy(tipWorld());
+}
+
+// ---------- Kubus & kotak ----------
+const WARNA = [['Merah', 0xff3b5c], ['Hijau', 0x3ee089], ['Biru', 0x3b8cff]];
+const CUBE = 0.035;
+const boxes = [], cubes = [];
+const BOXPOS = [[-0.33, -0.07], [0.0, -0.37], [0.33, -0.07]];
+for (let i = 0; i < 3; i++) {
+  const g = new THREE.Group(); scene.add(g);
+  const m = new THREE.MeshStandardMaterial({ color: WARNA[i][1], roughness: .6, transparent: true, opacity: .85 });
+  const fl = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.006, 0.11), m); fl.position.y = 0.003; fl.receiveShadow = true; g.add(fl);
+  for (const [x, z, w, d] of [[0, -.052, .11, .006], [0, .052, .11, .006], [-.052, 0, .006, .11], [.052, 0, .006, .11]]) {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, d), m); wall.position.set(x, 0.025, z); wall.castShadow = true; g.add(wall);
+  }
+  boxes.push({ g, mat: m, warna: i });
+}
+for (let i = 0; i < 3; i++) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(CUBE, CUBE, CUBE), new THREE.MeshStandardMaterial({ color: WARNA[i][1], roughness: .4, emissive: 0x000000 }));
+  m.castShadow = true; scene.add(m);
+  cubes.push({ m, warna: i, held: false, vy: 0, done: false, home: new THREE.Vector3(), respawnT: 0 });
+}
+let skor = 0, tMulai = null, tSelesai = null, terbaik = null, ronde = 0;
+function acak() {
+  const order = [0, 1, 2].sort(() => Math.random() - .5);
+  boxes.forEach((b, i) => { b.warna = order[i]; b.mat.color.setHex(WARNA[order[i]][1]); b.g.position.set(BASE.x + BOXPOS[i][0], TY, BASE.z + BOXPOS[i][1]); });
+  const used = [];
+  for (const c of cubes) {
+    if (c.held) { scene.attach(c.m); c.held = false; }
+    let p, tries = 0;
+    do { const a = R.randFloat(-55, 55) * D2R, r = R.randFloat(0.2, 0.3); p = new THREE.Vector3(BASE.x - Math.sin(a) * r, TY + CUBE / 2, BASE.z - Math.cos(a) * r); tries++; }
+    while (tries < 200 && (used.some(u => u.distanceTo(p) < 0.09) || boxes.some(b => Math.hypot(b.g.position.x - p.x, b.g.position.z - p.z) < 0.11)));
+    used.push(p); c.home.copy(p); c.m.position.copy(p); c.m.rotation.set(0, Math.random() * 1.5, 0); c.vy = 0; c.done = false; c.respawnT = 0; c.m.material.emissive.setHex(0);
+  }
+  skor = 0; tMulai = null; tSelesai = null; lastInfo = '';
+}
+acak();
+
+// ---------- Suara ----------
+let ac = null, whine = null, whineGain = null;
+function initAudio() {
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)();
+    whine = ac.createOscillator(); whine.type = 'square'; whine.frequency.value = 300;
+    const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 2;
+    whineGain = ac.createGain(); whineGain.gain.value = 0; whine.connect(f).connect(whineGain).connect(ac.destination); whine.start(); } catch (e) {} }
+  ac?.resume?.();
+}
+function tone(f, d, type = 'sine', vol = .2) { if (!ac) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = f; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + .02); }
+addEventListener('pointerdown', initAudio); addEventListener('click', initAudio, true);
+renderer.xr.addEventListener('sessionstart', initAudio);
+
+// ---------- Capit: genggam / lepas ----------
+function toggleCapit(v) {
+  capitT = v === undefined ? (capitT ? 0 : 1) : v; tone(capitT ? 520 : 760, .08, 'square', .1);
+  if (capitT) {           // coba genggam kubus terdekat
+    const tp = tipWorld(); let best = null, bd = 0.04;
+    for (const c of cubes) { if (c.done || c.held) continue; const d = c.m.position.distanceTo(tp); if (d < bd) { bd = d; best = c; } }
+    if (best) { best.held = true; best.vy = 0; tipObj.attach(best.m); if (tMulai === null) tMulai = performance.now(); tone(880, .06, 'triangle', .15); for (const o of ctrls) haptic(o, .5, 50); }
+  } else {
+    for (const c of cubes) if (c.held) { c.held = false; scene.attach(c.m); c.vy = 0; }
+  }
+  lastInfo = '';
+}
+function dalamKotak(p) { return boxes.find(b => Math.abs(p.x - b.g.position.x) < 0.048 && Math.abs(p.z - b.g.position.z) < 0.048); }
+function fisikaKubus(dt) {
+  for (const c of cubes) {
+    if (c.held || c.done) continue;
+    if (c.respawnT > 0) { c.respawnT -= dt; if (c.respawnT <= 0) { c.m.position.copy(c.home); c.m.rotation.set(0, 0, 0); c.vy = 0; } continue; }
+    const p = c.m.position, b = dalamKotak(p);
+    const lantai = b ? TY + 0.006 + CUBE / 2 : TY + CUBE / 2;
+    const diMeja = Math.abs(p.x - TC.x) < TW / 2 && Math.abs(p.z - TC.z) < TD / 2;
+    if (p.y > lantai + 1e-4 || !diMeja) {
+      c.vy -= 9.8 * dt; p.y += c.vy * dt;
+      if (!diMeja && p.y < 0.3) { c.respawnT = 0.01; continue; }
+      if (diMeja && p.y <= lantai) {
+        p.y = lantai; c.vy = 0; c.m.rotation.x = c.m.rotation.z = 0; tone(220, .05, 'triangle', .1);
+        if (b) {
+          if (b.warna === c.warna) {
+            c.done = true; skor++; c.m.material.emissive.setHex(0x333333);
+            popup(p.clone().add(new THREE.Vector3(0, .12, 0)), `✓ ${skor}/3`, '#7dffa0', .22); tone(1200, .12, 'triangle', .2); setTimeout(() => tone(1600, .18, 'triangle', .2), 90);
+            if (skor === 3) { tSelesai = (performance.now() - tMulai) / 1000; ronde++; if (!terbaik || tSelesai < terbaik) terbaik = tSelesai;
+              popup(BASE.clone().add(new THREE.Vector3(0, .45, 0)), `Selesai! ${tSelesai.toFixed(1)} s`, '#ffd23f', .35);
+              [660, 880, 1100, 1320].forEach((f, i) => setTimeout(() => tone(f, .18, 'square', .12), i * 120)); }
+          } else {
+            popup(p.clone().add(new THREE.Vector3(0, .12, 0)), 'Kotak salah!', '#ff6b8a', .22); tone(180, .3, 'sawtooth', .12); c.respawnT = 0.9;
+          }
+          lastInfo = '';
+        }
+      }
+    }
+  }
+}
+
+// ---------- Panel tombol ----------
+const panel = new THREE.Group(); panel.position.set(-0.66, 1.0, -0.34); panel.rotation.set(-0.75, 0.85, 0, 'YXZ'); scene.add(panel);
+const panelBg = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.015), new THREE.MeshStandardMaterial({ color: 0x221d33, metalness: .3 }));
+panelBg.position.set(0, 0, -0.01); panel.add(panelBg);
+const buttons = [];
+function drawFace(ctx, c, label, fs, sub) {
+  ctx.clearRect(0, 0, c.width, c.height);
+  const g = ctx.createLinearGradient(0, 0, 0, c.height); g.addColorStop(0, 'rgba(255,255,255,.22)'); g.addColorStop(.5, 'rgba(255,255,255,.06)'); g.addColorStop(1, 'rgba(0,0,0,.15)');
+  ctx.fillStyle = g; rr(ctx, 4, 4, c.width - 8, c.height - 8, Math.min(c.height, c.width) * .22); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 4; rr(ctx, 4, 4, c.width - 8, c.height - 8, Math.min(c.height, c.width) * .22); ctx.stroke();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (sub) { ctx.fillStyle = sub.col || '#cdb6ff'; ctx.font = `600 ${fs * .55}px ${FONT}`; ctx.fillText(sub.t, c.width / 2, c.height * .3); ctx.fillStyle = '#fff'; ctx.font = `bold ${fs}px ${FONT}`; ctx.fillText(label, c.width / 2, c.height * .68); return; }
+  ctx.fillStyle = '#fff'; ctx.font = `bold ${fs}px ${FONT}`;
+  if (ctx.measureText(label).width < c.width - 20) ctx.fillText(label, c.width / 2, c.height / 2 + 4);
+  else { const [a, ...b] = label.split(' '); ctx.fillText(a, c.width / 2, c.height / 2 - fs * .5 + 4); ctx.fillText(b.join(' '), c.width / 2, c.height / 2 + fs * .55 + 4); }
+}
+function makeButton(label, x, y, opt = {}) {
+  const { action = null, hold = null, color = 0x3a2f5a, w = 0.1, h = 0.08, fs = 60, sub } = opt;
+  const c = document.createElement('canvas'); c.width = Math.round(w * 2200); c.height = Math.round(h * 2200);
+  const ctx = c.getContext('2d'); drawFace(ctx, c, label, fs, sub);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const base = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.025), new THREE.MeshStandardMaterial({ color, emissive: 0x000000 }));
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(w * .95, h * .95), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+  face.position.z = 0.0131; base.add(face); base.position.set(x, y, 0.012);
+  base.userData = { action, hold, set: (l, s2) => { drawFace(ctx, c, l, fs, s2); tex.needsUpdate = true; } };
+  panel.add(base); if (action || hold) buttons.push(base); return base;
+}
+const NAMA = ['Dasar', 'Bahu', 'Siku', 'Pergelangan'];
+const hexCss = h => '#' + h.toString(16).padStart(6, '0');
+const servoDisp = [];
+NAMA.forEach((n, i) => {
+  const y = 0.18 - i * 0.09;
+  const gerak = d => (dt) => { if (mode !== 'manual') setMode('manual'); servoT[i] = R.clamp(servoT[i] + d * 60 * dt, 0, 180); };
+  makeButton('−', -0.19, y, { hold: gerak(-1), color: 0x5a2f3a, w: .07, h: .075, fs: 76 });
+  servoDisp[i] = makeButton('90°', -0.075, y, { color: 0x2a2440, w: .14, h: .075, fs: 46, sub: { t: `S${i + 1} ${n}`, col: hexCss(SC[i]) } });
+  makeButton('+', 0.04, y, { hold: gerak(1), color: 0x2f5a3a, w: .07, h: .075, fs: 76 });
+});
+const modeBtn = makeButton('Mode: IK', 0.165, 0.18, { action: () => setMode(mode === 'ik' ? 'manual' : 'ik'), color: 0x3a2f73, w: .13, h: .075, fs: 38 });
+const capitBtn = makeButton('Capit: buka', 0.165, 0.09, { action: () => toggleCapit(), color: 0x5a2f73, w: .13, h: .075, fs: 36 });
+makeButton('Pose awal', 0.165, 0.0, { action: () => { setMode('ik'); toggleCapit(0); servoT = [90, 135, 80, 45]; setTimeout(placeTarget, 900); }, color: 0x6b5a2f, w: .13, h: .075, fs: 38 });
+makeButton('Acak ulang', 0.165, -0.09, { action: () => { acak(); tone(660, .1); }, color: 0x2f4a73, w: .13, h: .075, fs: 38 });
+makeButton('✕ Keluar', 0.0, -0.2, { action: () => { try { renderer.xr.getSession()?.end(); } catch (e) {} }, color: 0x8a2433, w: .2, h: .06, fs: 40 });
+function setMode(m) { mode = m; modeBtn.userData.set(m === 'ik' ? 'Mode: IK' : 'Mode: Manual'); if (m === 'ik') placeTarget(); tone(880, .08, 'triangle', .12); lastInfo = ''; }
+
+// ---------- Controller ----------
+const ray = new THREE.Raycaster();
+const ctrls = [0, 1].map(i => {
+  const c = renderer.xr.getController(i); scene.add(c);
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]),
+    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: .5 }));
+  line.scale.z = 2; c.add(line);
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(0.006, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffff66 }));
+  dot.visible = false; scene.add(dot);
+  const o = { c, line, dot, source: null, hover: null, holdBtn: null, grab: null };
+  c.addEventListener('connected', e => { o.source = e.data; });
+  c.addEventListener('disconnected', () => { o.source = null; o.grab = null; o.holdBtn = null; });
+  c.addEventListener('selectstart', () => {
+    initAudio();
+    if (o.hover?.isBallHit) { // pegang bola target: jaga jarak & offset
+      const cp = new THREE.Vector3().setFromMatrixPosition(c.matrixWorld);
+      o.grab = { dist: cp.distanceTo(target), near: cp.distanceTo(target) < 0.12, off: target.clone().sub(cp) };
+      if (mode !== 'ik') setMode('ik'); haptic(o, .4, 30);
+    } else if (o.hover) { press(o.hover, o); haptic(o, .6, 40); }
+  });
+  c.addEventListener('selectend', () => { o.grab = null; o.holdBtn = null; });
+  c.addEventListener('squeezestart', () => { initAudio(); toggleCapit(); haptic(o, .5, 40); });
+  return o;
+});
+function haptic(o, s, ms) { try { o?.source?.gamepad?.hapticActuators?.[0]?.pulse(s, ms); } catch (e) {} }
+function press(btn, o) { if (btn.userData.action) btn.userData.action(); if (btn.userData.hold && o) o.holdBtn = btn; btn.userData.pressT = .15; }
+const tmpM = new THREE.Matrix4(), tmpV = new THREE.Vector3(), tmpD = new THREE.Vector3();
+function updateCtrls(dt) {
+  for (const b of buttons) b.material.emissive.setHex(0);
+  for (const o of ctrls) {
+    o.hover = null; o.dot.visible = false;
+    if (!o.source) continue;
+    tmpM.identity().extractRotation(o.c.matrixWorld);
+    ray.ray.origin.setFromMatrixPosition(o.c.matrixWorld); ray.ray.direction.set(0, 0, -1).applyMatrix4(tmpM);
+    if (o.grab) {
+      const p = o.grab.near ? ray.ray.origin.clone().add(o.grab.off) : ray.ray.at(o.grab.dist, tmpV.clone());
+      setTarget(p); o.line.scale.z = o.grab.near ? 0.05 : o.grab.dist; continue;
+    }
+    if (o.holdBtn) { o.holdBtn.userData.hold(dt); o.holdBtn.userData.pressT = .05; }
+    const near = ray.ray.origin.distanceTo(target) < 0.09;
+    const hits = ray.intersectObjects([...buttons, tHit], false);
+    const hit = near ? { object: tHit, distance: 0.02, point: target } : hits[0];
+    if (hit) {
+      o.hover = hit.object === tHit ? { isBallHit: true } : hit.object;
+      if (hit.object !== tHit) hit.object.material.emissive.setHex(0x335577);
+      o.line.scale.z = hit.distance; o.dot.position.copy(hit.point); o.dot.visible = true;
+    } else o.line.scale.z = 2;
+  }
+}
+// mode tes laptop: seret bola, roda = tinggi, spasi = capit
+const mouse = new THREE.Vector2(); let dragging = false, mouseHold = null;
+const plane = new THREE.Plane();
+function mray(ev) { mouse.set(ev.clientX / innerWidth * 2 - 1, -ev.clientY / innerHeight * 2 + 1); ray.setFromCamera(mouse, camera); }
+renderer.domElement.addEventListener('pointerdown', ev => {
+  if (renderer.xr.isPresenting) return; mray(ev);
+  const hit = ray.intersectObjects([...buttons, tHit], false)[0]; if (!hit) return;
+  if (hit.object === tHit) { dragging = true; plane.set(new THREE.Vector3(0, 1, 0), -target.y); if (mode !== 'ik') setMode('ik'); }
+  else { press(hit.object); if (hit.object.userData.hold) mouseHold = hit.object; }
+});
+addEventListener('pointermove', ev => { if (!dragging) return; mray(ev); const p = ray.ray.intersectPlane(plane, tmpV); if (p) setTarget(p.clone().setY(target.y)); });
+addEventListener('pointerup', () => { dragging = false; mouseHold = null; });
+renderer.domElement.addEventListener('wheel', ev => { if (renderer.xr.isPresenting) return; ev.preventDefault(); setTarget(target.clone().setY(target.y - Math.sign(ev.deltaY) * 0.015)); if (dragging) plane.constant = -target.y; }, { passive: false });
+addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); initAudio(); toggleCapit(); } });
+
+// ---------- Panel info ----------
+function drawInfo() {
+  const tp = tipWorld();
+  const keyS = [mode, reach, capitT, skor, ronde, servo.map(Math.round).join(','), Math.round(tp.x * 100), Math.round(tp.y * 100), Math.round(tp.z * 100), tMulai && !tSelesai ? Math.floor((performance.now() - tMulai) / 1000) : 0].join('|');
+  if (keyS === lastInfo) return; lastInfo = keyS;
+  const { ctx, c } = info, Wd = c.width; ctx.clearRect(0, 0, Wd, c.height);
+  glass(ctx, Wd, c.height, 'rgba(160,102,255,.9)', 36);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#cdb6ff'; ctx.font = `32px ${FONT}`; ctx.fillText(mode === 'ik' ? 'INVERSE KINEMATICS' : 'KENDALI MANUAL (FORWARD KINEMATICS)', 44, 64);
+  ctx.fillStyle = '#fff'; ctx.font = `bold 52px ${FONT}`; ctx.fillText(mode === 'ik' ? 'Kamu atur tujuannya' : 'Kamu atur tiap servo', 44, 124);
+  ctx.fillStyle = '#e4dcff'; ctx.font = `29px ${FONT}`;
+  let y = wrap(ctx, mode === 'ik'
+    ? 'Gerakkan bola biru. Komputer menghitung sudut keempat servo agar ujung capit sampai ke sana — rumus trigonometri, dihitung ulang 70+ kali per detik.'
+    : 'Seperti kendali joystick: tiap tombol memutar satu servo. Coba ambil kubus dengan cara ini — jauh lebih sulit, kan? Itulah gunanya IK.', 44, 172, Wd - 88, 38);
+  if (mode === 'ik' && !reach) { ctx.fillStyle = '#ff6b8a'; ctx.font = `bold 30px ${FONT}`; y = wrap(ctx, 'Di luar jangkauan — lengan meraih sejauh mungkin.', 44, y + 46, Wd - 88, 38); }
+  // meteran servo
+  y = Math.max(y + 30, 300);
+  NAMA.forEach((n, i) => {
+    const cx = i % 2 ? 640 : 240, cy = y + 140 + Math.floor(i / 2) * 215, rad = 120;
+    const col = hexCss(SC[i]);
+    ctx.lineWidth = 18; ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.arc(cx, cy, rad, Math.PI, 0); ctx.stroke();
+    const a = Math.PI + servo[i] / 180 * Math.PI;
+    ctx.strokeStyle = col; ctx.beginPath(); ctx.arc(cx, cy, rad, Math.PI, a); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 4; ctx.setLineDash([8, 8]); { const ta = Math.PI + servoT[i] / 180 * Math.PI; ctx.beginPath(); ctx.moveTo(cx + Math.cos(ta) * (rad - 52), cy + Math.sin(ta) * (rad - 52)); ctx.lineTo(cx + Math.cos(ta) * (rad - 16), cy + Math.sin(ta) * (rad - 16)); ctx.stroke(); } ctx.setLineDash([]);
+    ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = `bold 46px ${FONT}`; ctx.fillText(Math.round(servo[i]) + '°', cx, cy - 8);
+    ctx.fillStyle = col; ctx.font = `600 27px ${FONT}`; ctx.fillText(`S${i + 1} · ${n}`, cx, cy + 36); ctx.textAlign = 'left'; ctx.lineCap = 'butt';
+  });
+  y += 480;
+  ctx.fillStyle = '#cdb6ff'; ctx.font = `28px ${FONT}`;
+  ctx.fillText(`Ujung capit: x ${(tp.x - BASE.x) * 100 | 0}  y ${(tp.y - BASE.y) * 100 | 0}  z ${(BASE.z - tp.z) * 100 | 0} cm   ·   capit ${capitT ? 'TUTUP' : 'BUKA'}`, 44, y);
+  ctx.fillStyle = '#ffd23f'; ctx.font = `bold 38px ${FONT}`;
+  const waktu = tSelesai ? tSelesai.toFixed(1) + ' s ✓' : tMulai ? Math.floor((performance.now() - tMulai) / 1000) + ' s' : '—';
+  ctx.fillText(`Misi: kubus ke kotak sewarna  ${skor}/3`, 44, y + 62);
+  ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = `27px ${FONT}`;
+  ctx.fillStyle = '#fff'; ctx.font = `600 32px ${FONT}`; ctx.fillText(`⏱ ${waktu}` + (terbaik ? `   ·   Rekor ${terbaik.toFixed(1)} s` : ''), 44, y + 112);
+  ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.font = `26px ${FONT}`; ctx.fillText('Pegang bola: trigger  ·  Capit buka/tutup: tombol grip', 44, y + 158);
+  info.tex.needsUpdate = true;
+}
+
+// ---------- Loop ----------
+const clock = new THREE.Clock(); let infoT = 0, prevServo = servo.slice();
+placeTarget(); setTarget(target);
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  updateCtrls(dt);
+  if (mouseHold?.userData.hold) { mouseHold.userData.hold(dt); mouseHold.userData.pressT = .05; }
+  // servo bergerak dengan kecepatan terbatas
+  let gerak = 0;
+  for (let i = 0; i < 4; i++) { const d = servoT[i] - servo[i], st = SERVO_SPEED * dt; servo[i] += Math.abs(d) < st ? d : Math.sign(d) * st; gerak += Math.abs(servo[i] - prevServo[i]); prevServo[i] = servo[i]; }
+  capit += R.clamp(capitT - capit, -dt * 4, dt * 4);
+  terapkan();
+  if (mode === 'manual') placeTarget();
+  fisikaKubus(dt);
+  // tampilan bola target
+  tBall.position.copy(target); tMat.color.setHex(reach || mode !== 'ik' ? 0x33ddff : 0xff3b5c); tRing.rotation.y += dt * 2; tRing.rotation.x = 1.2;
+  tBall.visible = stalk.visible = shadowDot.visible = true;
+  shadowDot.position.set(target.x, TY + 0.002, target.z);
+  stalk.geometry.setFromPoints([target, new THREE.Vector3(target.x, TY, target.z)]); stalk.computeLineDistances();
+  if (whineGain) { whineGain.gain.setTargetAtTime(Math.min(.05, gerak / dt / 2500), ac.currentTime, .03); whine.frequency.setTargetAtTime(260 + gerak / dt * 2, ac.currentTime, .05); }
+  for (const b of buttons) { if (b.userData.pressT > 0) { b.userData.pressT -= dt; b.position.z = 0.004; } else b.position.z = 0.012; }
+  servoDisp.forEach((b, i) => { const v = Math.round(servo[i]); if (b.userData.v !== v) { b.userData.v = v; b.userData.set(v + '°', { t: `S${i + 1} ${NAMA[i]}`, col: hexCss(SC[i]) }); } });
+  const cl = capitT ? 'Capit: tutup' : 'Capit: buka'; if (capitBtn.userData.l !== cl) { capitBtn.userData.l = cl; capitBtn.userData.set(cl); }
+  infoT += dt; if (infoT > 0.1) { infoT = 0; drawInfo(); }
+  updatePopups();
+  renderer.render(scene, camera);
+});
+
+// kait uji
+window.__arm = {
+  setTarget: (x, y, z) => setTarget(new THREE.Vector3(BASE.x + x, BASE.y + y, BASE.z + z)),
+  tip: () => { const t = tipWorld(); return [t.x - BASE.x, t.y - BASE.y, t.z - BASE.z]; },
+  state: () => ({ servo: servo.map(Math.round), servoT: servoT.map(Math.round), reach, skor, mode, capit: capitT, tSelesai }),
+  cubes: () => cubes.map(c => ({ warna: c.warna, p: [c.m.getWorldPosition(new THREE.Vector3()).x - BASE.x, c.m.getWorldPosition(new THREE.Vector3()).y - BASE.y, c.m.getWorldPosition(new THREE.Vector3()).z - BASE.z], held: c.held, done: c.done })),
+  boxes: () => boxes.map(b => ({ warna: b.warna, p: [b.g.position.x - BASE.x, b.g.position.z - BASE.z] })),
+  capit: v => toggleCapit(v), info: () => info.c.toDataURL(), mode: setMode, acak,
+  layar: () => { const v = target.clone().project(camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; },
+};
+</script>
+</body>
+</html>
