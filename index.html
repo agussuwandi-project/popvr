@@ -79,6 +79,13 @@
   @keyframes bob{50%{transform:translateY(-14px) rotate(6deg)}}
   .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
   /* langkah */
+  .seg{display:flex;align-items:center;gap:16px;margin:56px 0 20px}
+  .seg:first-of-type{margin-top:8px}
+  .seg-ic{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-size:26px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)}
+  .seg h2{margin:0;font-size:clamp(24px,2.6vw,32px);letter-spacing:-.01em}
+  .seg p{margin:4px 0 0;color:var(--muted);font-size:15px}
+  .seg-n{margin-left:auto;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 12px;white-space:nowrap}
+  @media (max-width:640px){.seg-n{display:none}.seg{margin-top:40px}}
   .how{margin-top:28px;padding:26px 30px;display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
   .step{display:flex;gap:14px;align-items:flex-start}
   .num{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-weight:700;background:rgba(255,255,255,.1);border:1px solid var(--line)}
@@ -102,8 +109,9 @@
   </header>
 
   <h1>Masuk ke dunia <em>virtual</em> &amp; <em>mixed reality</em></h1>
-  <p class="lead">Tujuh pengalaman interaktif buatan kami, dari game seru sampai simulasi robotika. Pilih satu, pakai headset, lalu tekan <b>Masuk VR</b>.</p>
+  <p class="lead">Tujuh pengalaman interaktif buatan kami: empat game dan tiga simulasi robotika. Pilih satu, pakai headset, lalu tekan <b>Masuk VR</b>.</p>
 
+  <div class="seg"><div class="seg-ic">🎮</div><div><h2>Game</h2><p>Seru dimainkan, cocok untuk semua pengunjung.</p></div><span class="seg-n">4 game</span></div>
   <section class="glass hero">
     <div class="txt">
       <span class="badge">✦ Baru · Mixed Reality</span>
@@ -114,6 +122,31 @@
     <div class="visual" aria-hidden="true"><div class="portal"></div><div class="ufo a">🛸</div><div class="ufo b">👾</div></div>
   </section>
 
+  <section class="cards">
+    <a class="card glass" href="benteng.html" style="--accent:#5dff8a">
+      <div class="icon">🏰</div>
+      <div class="tags"><span class="tag">Multiplayer</span><span class="tag">1–4 pemain</span></div>
+      <h3>Benteng 4 Penjuru</h3>
+      <p>Empat penjaga, satu menara. Bertahan dari serangan segala arah, lalu tembak kapal induk bersama-sama.</p>
+      <div class="go"><span>Buat / gabung ruangan</span><span>→</span></div>
+    </a>
+    <a class="card glass" href="blaster.html" style="--accent:#a066ff">
+      <div class="icon">🚀</div>
+      <div class="tags"><span class="tag">Game</span><span class="tag">75 detik</span></div>
+      <h3>Galaksi Blaster</h3>
+      <p>Berdiri di platform luar angkasa dan tembak alien sebelum mereka menabrakmu. Kejar combo hingga x4.</p>
+      <div class="go"><span>Mainkan</span><span>→</span></div>
+    </a>
+    <a class="card glass" href="bola.html" style="--accent:#33ddff">
+      <div class="icon">🎈</div>
+      <div class="tags"><span class="tag">Pemula</span><span class="tag">Hand tracking</span></div>
+      <h3>Pop Bola</h3>
+      <p>Pecahkan bola dengan sentuhan tangan atau controller. Cocok untuk yang baru pertama kali mencoba VR.</p>
+      <div class="go"><span>Mainkan</span><span>→</span></div>
+    </a>
+  </section>
+
+  <div class="seg"><div class="seg-ic">🤖</div><div><h2>Simulasi Robotika</h2><p>Lihat cara kerja robot dari dalam: kinematika, inverse kinematics, dan kontrol PID.</p></div><span class="seg-n">3 simulasi</span></div>
   <section class="cards">
     <a class="card glass" href="mecanum.html" style="--accent:#ffb020">
       <div class="icon">🤖</div>
@@ -135,27 +168,6 @@
       <h3>Line Follower PID</h3>
       <p>Atur Kp, Ki, Kd dan lihat langsung bedanya: keluar di tikungan, zig-zag, atau mulus. Kejar satu putaran di bawah 9 detik.</p>
       <div class="go"><span>Buka simulasi</span><span>→</span></div>
-    </a>
-    <a class="card glass" href="benteng.html" style="--accent:#5dff8a">
-      <div class="icon">🏰</div>
-      <div class="tags"><span class="tag">Multiplayer</span><span class="tag">1–4 pemain</span></div>
-      <h3>Benteng 4 Penjuru</h3>
-      <p>Empat penjaga, satu menara. Bertahan dari serangan segala arah, lalu tembak kapal induk bersama-sama.</p>
-      <div class="go"><span>Buat / gabung ruangan</span><span>→</span></div>
-    </a>
-    <a class="card glass" href="blaster.html" style="--accent:#a066ff">
-      <div class="icon">🚀</div>
-      <div class="tags"><span class="tag">Game</span><span class="tag">75 detik</span></div>
-      <h3>Galaksi Blaster</h3>
-      <p>Berdiri di platform luar angkasa dan tembak alien sebelum mereka menabrakmu. Kejar combo hingga x4.</p>
-      <div class="go"><span>Mainkan</span><span>→</span></div>
-    </a>
-    <a class="card glass" href="bola.html" style="--accent:#33ddff">
-      <div class="icon">🎈</div>
-      <div class="tags"><span class="tag">Pemula</span><span class="tag">Hand tracking</span></div>
-      <h3>Pop Bola</h3>
-      <p>Pecahkan bola dengan sentuhan tangan atau controller. Cocok untuk yang baru pertama kali mencoba VR.</p>
-      <div class="go"><span>Mainkan</span><span>→</span></div>
     </a>
   </section>
 
