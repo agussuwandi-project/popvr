@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Benteng 4 Penjuru · Multiplayer VR</title>
+<meta name="description" content="Benteng 4 Penjuru: game VR co-op 1–4 pemain dalam satu ruangan.">
+<meta name="theme-color" content="#05060f">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="tema.css">
@@ -157,7 +160,7 @@ renderer.xr.enabled = true;
 renderer.xr.setReferenceSpaceType('local-floor');
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-import('./logo3d.js').then(m => m.pasangLogo3D(renderer, scene)).catch(e => console.warn('logo3d', e));
+import('./logo3d.js').then(m => m.pasangLogo3D(renderer, scene, { syarat: () => game.st !== 'play' })).catch(e => console.warn('logo3d', e));
 const BG = new THREE.Color(0x04060f); scene.background = BG.clone(); scene.fog = new THREE.Fog(0x04060f, 25, 70);
 const FOG = scene.fog;
 const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.03, 300);

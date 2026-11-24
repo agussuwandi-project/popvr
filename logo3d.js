@@ -1,6 +1,7 @@
 // Logo UVERS 3D di dalam VR/MR: matahari terbit di atas lengkung bumi, sama seperti layar loading,
 // tapi berlapis kedalaman (huruf punya ketebalan, matahari & sinar di belakang) lalu memudar.
-// Pemakaian: import('./logo3d.js').then(m => m.pasangLogo3D(renderer, scene));
+// Pemakaian: import('./logo3d.js').then(m => m.pasangLogo3D(renderer, scene, { syarat: () => true }));
+// Diputar sekali per halaman (saat pertama masuk VR), dan hanya jika syarat() bernilai true.
 // Uji di laptop: tambahkan ?logo3d=1 di URL.
 import * as THREE from 'three';
 
@@ -34,7 +35,7 @@ function glowTexture() {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
-export function pasangLogo3D(renderer, scene) {
+export function pasangLogo3D(renderer, scene, opsi = {}) {
   const M = window.UVERS_MASKS;
   if (!M) { console.warn('logo3d: mask logo tidak ada (loader.js belum dimuat)'); return; }
   renderer.localClippingEnabled = true;     // hanya berlaku untuk material yang memakai clippingPlanes (matahari)
@@ -142,7 +143,11 @@ export function pasangLogo3D(renderer, scene) {
     fixedT = null; t0 = -1; frames = 0; playing = true; root.scale.setScalar(1); setOpacity(1); scene.remove(root);
     horizon.scale.x = .001; rays.forEach(r => r.scale.setScalar(.001)); letters.visible = word.visible = reflect.visible = false;
   }
-  renderer.xr.addEventListener('sessionstart', mainkan);
+  let sudah = false;
+  renderer.xr.addEventListener('sessionstart', () => {
+    if (sudah || (opsi.syarat && !opsi.syarat())) return;
+    sudah = true; mainkan();
+  });
   if (new URLSearchParams(location.search).get('logo3d') === '1') setTimeout(mainkan, 300);
   function pratinjau(t) { if (!playing) mainkan(); fixedT = t; }
   window.uversLogo3D = { mainkan, pratinjau };
