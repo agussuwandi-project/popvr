@@ -74,7 +74,7 @@
   .ufo{position:absolute;font-size:46px;animation:bob 3s ease-in-out infinite}
   .ufo.a{top:16%;left:14%}.ufo.b{bottom:14%;right:16%;animation-delay:-1.5s;font-size:36px}
   @keyframes bob{50%{transform:translateY(-14px) rotate(6deg)}}
-  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
   /* langkah */
   .how{margin-top:28px;padding:26px 30px;display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
   .step{display:flex;gap:14px;align-items:flex-start}
@@ -82,6 +82,7 @@
   .step b{display:block;margin-bottom:4px}
   .step span{color:var(--muted);font-size:14px;line-height:1.45}
   footer{margin-top:36px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;color:var(--muted);font-size:14px}
+  @media (max-width:1100px){.cards{grid-template-columns:1fr 1fr}}
   @media (max-width:980px){.hero{grid-template-columns:1fr}.visual{min-height:240px}.cards{grid-template-columns:1fr 1fr}.how{grid-template-columns:1fr 1fr}}
   @media (max-width:640px){.cards,.how{grid-template-columns:1fr}main{padding:28px 18px}.hero .txt{padding:28px}}
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -97,7 +98,7 @@
   </header>
 
   <h1>Masuk ke dunia <em>virtual</em> &amp; <em>mixed reality</em></h1>
-  <p class="lead">Empat pengalaman interaktif buatan kami, dari game seru sampai simulasi robotika. Pilih satu, pakai headset, lalu tekan <b>ENTER VR</b>.</p>
+  <p class="lead">Lima pengalaman interaktif buatan kami, dari game seru sampai simulasi robotika. Pilih satu, pakai headset, lalu tekan <b>ENTER VR</b>.</p>
 
   <section class="glass hero">
     <div class="txt">
@@ -110,6 +111,13 @@
   </section>
 
   <section class="cards">
+    <a class="card glass" href="benteng.html" style="--accent:#5dff8a">
+      <div class="icon">🏰</div>
+      <div class="tags"><span class="tag">Multiplayer</span><span class="tag">1–4 pemain</span></div>
+      <h3>Benteng 4 Penjuru</h3>
+      <p>Empat penjaga, satu menara. Bertahan dari serangan segala arah, lalu tembak kapal induk bersama-sama.</p>
+      <div class="go"><span>Buat / gabung ruangan</span><span>→</span></div>
+    </a>
     <a class="card glass" href="mecanum.html" style="--accent:#ffb020">
       <div class="icon">🤖</div>
       <div class="tags"><span class="tag">Simulasi</span><span class="tag">Robotika</span></div>
