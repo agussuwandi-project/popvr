@@ -646,7 +646,16 @@ if (params.get('room')) { $('inCode').value = params.get('room'); if (params.get
 // =================== LOOP ===================
 const clock = new THREE.Clock(); let now = 0, pubT = 0, hostT = 0;
 const ePos = new THREE.Vector3();
+// Cadangan saat tab/headset tidak tampil: browser membekukan loop render,
+// jadi detak kehadiran + logika host tetap jalan lewat timer (min. ~1×/detik).
+let lastFrame = performance.now();
+setInterval(() => {
+  if (performance.now() - lastFrame < 500) return;      // loop render masih hidup
+  if (SLOT >= 0) publishSelf();
+  hostTick();
+}, 250);
 renderer.setAnimationLoop(() => {
+  lastFrame = performance.now();
   const dt = Math.min(clock.getDelta(), .05); now += dt; const t = net.now();
   pubT += dt; if (pubT > 1 / 12 && SLOT >= 0) { pubT = 0; publishSelf(); }
   hostT += dt; if (hostT > .1) { hostT = 0; hostTick(); }
