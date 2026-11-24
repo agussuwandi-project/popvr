@@ -7,6 +7,9 @@
 <meta name="description" content="Lengan Robot: lengan 4 servo dengan inverse kinematics, pindahkan kubus ke kotak sewarna di VR.">
 <meta name="theme-color" content="#05060f">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="title-en" content="Robot Arm VR">
+<meta name="description-en" content="Robot Arm: a 4-servo arm with inverse kinematics; move the cubes into the matching boxes in VR.">
+<script src="i18n.js"></script>
 <link rel="stylesheet" href="tema.css">
 <style>
   :root{--accent:#c084fc;--a1:#c084fc;--a2:#6366f1}
@@ -23,14 +26,14 @@
 <div class="xr-aura" aria-hidden="true"><i></i><i></i><i></i></div>
 <header class="xr-top">
   <div class="xr-left"><a class="xr-back" href="./">← Menu</a>
-    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span>Lengan Robot</span></div></div></div>
-  <div class="xr-pill" id="xrStatus">Memeriksa perangkat…</div>
+    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span data-en="Robot Arm">Lengan Robot</span></div></div></div>
+  <div class="xr-pill" id="xrStatus" data-en="Checking device…" data-en-if="Memeriksa perangkat…">Memeriksa perangkat…</div>
 </header>
 <div id="ov">
-  <div class="xr-head"><div class="xr-icon">🦾</div><div><div class="tags"><span class="tag hot">Simulasi</span><span class="tag">Robotika</span><span class="tag">Inverse Kinematics</span></div><h1>Lengan Robot</h1></div></div>
-  <p>Pegang bola target, lengan 4 servo mengikutinya. Komputer menghitung sudut tiap servo (inverse kinematics). Misi: pindahkan 3 kubus ke kotak sewarna.</p>
-  <div class="btns"><button class="btn primary" id="btnVR" disabled>Masuk VR <span class="arw">→</span></button></div>
-  <div id="msg">Memeriksa perangkat…</div>
+  <div class="xr-head"><div class="xr-icon">🦾</div><div><div class="tags"><span class="tag hot" data-en="Simulation">Simulasi</span><span class="tag" data-en="Robotics">Robotika</span><span class="tag">Inverse Kinematics</span></div><h1 data-en="Robot Arm">Lengan Robot</h1></div></div>
+  <p data-en="Grab the target ball and the 4-servo arm follows it. The computer works out each servo angle (inverse kinematics). Mission: move 3 cubes into the box of the same colour.">Pegang bola target, lengan 4 servo mengikutinya. Komputer menghitung sudut tiap servo (inverse kinematics). Misi: pindahkan 3 kubus ke kotak sewarna.</p>
+  <div class="btns"><button class="btn primary" id="btnVR" disabled data-en="Enter VR <span class=&quot;arw&quot;>→</span>">Masuk VR <span class="arw">→</span></button></div>
+  <div id="msg" data-en="Checking device…" data-en-if="Memeriksa perangkat…">Memeriksa perangkat…</div>
 </div>
 <script type="module">
 import * as THREE from 'three';
@@ -79,19 +82,19 @@ renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 {
   const ov = document.getElementById('ov'), msg = document.getElementById('msg'), btnVR = document.getElementById('btnVR');
-  const laptop = 'Mode tes laptop: seret bola biru, roda mouse = naik/turun, Spasi = capit.';
+  const laptop = L('Mode tes laptop: seret bola biru, roda mouse = naik/turun, Spasi = capit.', 'Laptop test mode: drag the blue ball, mouse wheel = up/down, Space = gripper.');
   (async () => {
-    if (!navigator.xr) { msg.textContent = 'WebXR tidak tersedia. ' + laptop; return; }
+    if (!navigator.xr) { msg.textContent = L('WebXR tidak tersedia. ', 'WebXR not available. ') + laptop; return; }
     const ok = await navigator.xr.isSessionSupported('immersive-vr').catch(() => false);
     btnVR.disabled = !ok;
-    msg.textContent = ok ? 'Siap! Tekan Masuk VR, lalu pakai headset.' : 'Headset tidak terdeteksi. ' + laptop;
+    msg.textContent = ok ? L('Siap! Tekan Masuk VR, lalu pakai headset.', 'Ready! Press Enter VR, then put on the headset.') : L('Headset tidak terdeteksi. ', 'No headset detected. ') + laptop;
   })();
   btnVR.onclick = async () => {
     try {
       const s = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] });
       s.addEventListener('end', () => ov.classList.remove('hide'));
       await renderer.xr.setSession(s); ov.classList.add('hide');
-    } catch (e) { msg.textContent = 'Gagal memulai: ' + e.message; }
+    } catch (e) { msg.textContent = L('Gagal memulai: ', 'Failed to start: ') + e.message; }
   };
 }
 
@@ -158,7 +161,7 @@ const header = makePanel(2.4, 0.4, 1300, 216);
 header.mesh.position.set(0, 2.35, -3.6); header.mesh.lookAt(0, 1.6, 0); scene.add(header.mesh);
 { const { ctx, c } = header; glass(ctx, c.width, c.height, 'rgba(160,102,255,.9)', 36);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#fff'; ctx.font = `bold 78px ${FONT}`; ctx.fillText('LENGAN ROBOT 4 SERVO', c.width / 2, 80);
+  ctx.fillStyle = '#fff'; ctx.font = `bold 78px ${FONT}`; ctx.fillText(L('LENGAN ROBOT 4 SERVO', '4-SERVO ROBOT ARM'), c.width / 2, 80);
   ctx.fillStyle = '#cdb6ff'; ctx.font = `42px ${FONT}`; ctx.fillText(HEADER, c.width / 2, 158); header.tex.needsUpdate = true; }
 const info = makePanel(0.9, 1.06, 880, 1040);
 info.mesh.position.set(0.92, 1.38, -0.78); info.mesh.lookAt(0, 1.45, 0.1); scene.add(info.mesh);
@@ -342,10 +345,10 @@ function fisikaKubus(dt) {
             c.done = true; skor++; c.m.material.emissive.setHex(0x333333);
             popup(p.clone().add(new THREE.Vector3(0, .12, 0)), `✓ ${skor}/3`, '#7dffa0', .22); tone(1200, .12, 'triangle', .2); setTimeout(() => tone(1600, .18, 'triangle', .2), 90);
             if (skor === 3) { tSelesai = (performance.now() - tMulai) / 1000; ronde++; if (!terbaik || tSelesai < terbaik) terbaik = tSelesai;
-              popup(BASE.clone().add(new THREE.Vector3(0, .45, 0)), `Selesai! ${tSelesai.toFixed(1)} s`, '#ffd23f', .35);
+              popup(BASE.clone().add(new THREE.Vector3(0, .45, 0)), L(`Selesai! ${tSelesai.toFixed(1)} s`, `Done! ${tSelesai.toFixed(1)} s`), '#ffd23f', .35);
               [660, 880, 1100, 1320].forEach((f, i) => setTimeout(() => tone(f, .18, 'square', .12), i * 120)); }
           } else {
-            popup(p.clone().add(new THREE.Vector3(0, .12, 0)), 'Kotak salah!', '#ff6b8a', .22); tone(180, .3, 'sawtooth', .12); c.respawnT = 0.9;
+            popup(p.clone().add(new THREE.Vector3(0, .12, 0)), L('Kotak salah!', 'Wrong box!'), '#ff6b8a', .22); tone(180, .3, 'sawtooth', .12); c.respawnT = 0.9;
           }
           lastInfo = '';
         }
@@ -381,7 +384,7 @@ function makeButton(label, x, y, opt = {}) {
   base.userData = { action, hold, set: (l, s2) => { drawFace(ctx, c, l, fs, s2); tex.needsUpdate = true; } };
   panel.add(base); if (action || hold) buttons.push(base); return base;
 }
-const NAMA = ['Dasar', 'Bahu', 'Siku', 'Pergelangan'];
+const NAMA = [L('Dasar', 'Base'), L('Bahu', 'Shoulder'), L('Siku', 'Elbow'), L('Pergelangan', 'Wrist')];
 const hexCss = h => '#' + h.toString(16).padStart(6, '0');
 const servoDisp = [];
 NAMA.forEach((n, i) => {
@@ -391,12 +394,12 @@ NAMA.forEach((n, i) => {
   servoDisp[i] = makeButton('90°', -0.075, y, { color: 0x2a2440, w: .14, h: .075, fs: 46, sub: { t: `S${i + 1} ${n}`, col: hexCss(SC[i]) } });
   makeButton('+', 0.04, y, { hold: gerak(1), color: 0x2f5a3a, w: .07, h: .075, fs: 76 });
 });
-const modeBtn = makeButton('Mode: IK', 0.165, 0.18, { action: () => setMode(mode === 'ik' ? 'manual' : 'ik'), color: 0x3a2f73, w: .13, h: .075, fs: 38 });
-const capitBtn = makeButton('Capit: buka', 0.165, 0.09, { action: () => toggleCapit(), color: 0x5a2f73, w: .13, h: .075, fs: 36 });
-makeButton('Pose awal', 0.165, 0.0, { action: () => { setMode('ik'); toggleCapit(0); servoT = [90, 135, 80, 45]; setTimeout(placeTarget, 900); }, color: 0x6b5a2f, w: .13, h: .075, fs: 38 });
-makeButton('Acak ulang', 0.165, -0.09, { action: () => { acak(); tone(660, .1); }, color: 0x2f4a73, w: .13, h: .075, fs: 38 });
-makeButton('✕ Keluar', 0.0, -0.2, { action: () => { try { renderer.xr.getSession()?.end(); } catch (e) {} }, color: 0x8a2433, w: .2, h: .06, fs: 40 });
-function setMode(m) { mode = m; modeBtn.userData.set(m === 'ik' ? 'Mode: IK' : 'Mode: Manual'); if (m === 'ik') placeTarget(); tone(880, .08, 'triangle', .12); lastInfo = ''; }
+const modeBtn = makeButton(L('Mode: IK', 'Mode: IK'), 0.165, 0.18, { action: () => setMode(mode === 'ik' ? 'manual' : 'ik'), color: 0x3a2f73, w: .13, h: .075, fs: 38 });
+const capitBtn = makeButton(L('Capit: buka', 'Gripper: open'), 0.165, 0.09, { action: () => toggleCapit(), color: 0x5a2f73, w: .13, h: .075, fs: 36 });
+makeButton(L('Pose awal', 'Home pose'), 0.165, 0.0, { action: () => { setMode('ik'); toggleCapit(0); servoT = [90, 135, 80, 45]; setTimeout(placeTarget, 900); }, color: 0x6b5a2f, w: .13, h: .075, fs: 38 });
+makeButton(L('Acak ulang', 'Shuffle'), 0.165, -0.09, { action: () => { acak(); tone(660, .1); }, color: 0x2f4a73, w: .13, h: .075, fs: 38 });
+makeButton(L('✕ Keluar', '✕ Exit'), 0.0, -0.2, { action: () => { try { renderer.xr.getSession()?.end(); } catch (e) {} }, color: 0x8a2433, w: .2, h: .06, fs: 40 });
+function setMode(m) { mode = m; modeBtn.userData.set(m === 'ik' ? L('Mode: IK', 'Mode: IK') : L('Mode: Manual', 'Mode: Manual')); if (m === 'ik') placeTarget(); tone(880, .08, 'triangle', .12); lastInfo = ''; }
 
 // ---------- Controller ----------
 const ray = new THREE.Raycaster();
@@ -470,13 +473,13 @@ function drawInfo() {
   const { ctx, c } = info, Wd = c.width; ctx.clearRect(0, 0, Wd, c.height);
   glass(ctx, Wd, c.height, 'rgba(160,102,255,.9)', 36);
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = '#cdb6ff'; ctx.font = `32px ${FONT}`; ctx.fillText(mode === 'ik' ? 'INVERSE KINEMATICS' : 'KENDALI MANUAL (FORWARD KINEMATICS)', 44, 64);
-  ctx.fillStyle = '#fff'; ctx.font = `bold 52px ${FONT}`; ctx.fillText(mode === 'ik' ? 'Kamu atur tujuannya' : 'Kamu atur tiap servo', 44, 124);
+  ctx.fillStyle = '#cdb6ff'; ctx.font = `32px ${FONT}`; ctx.fillText(mode === 'ik' ? 'INVERSE KINEMATICS' : L('KENDALI MANUAL (FORWARD KINEMATICS)', 'MANUAL CONTROL (FORWARD KINEMATICS)'), 44, 64);
+  ctx.fillStyle = '#fff'; ctx.font = `bold 52px ${FONT}`; ctx.fillText(mode === 'ik' ? L('Kamu atur tujuannya', 'You set the goal') : L('Kamu atur tiap servo', 'You set each servo'), 44, 124);
   ctx.fillStyle = '#e4dcff'; ctx.font = `29px ${FONT}`;
   let y = wrap(ctx, mode === 'ik'
-    ? 'Gerakkan bola biru. Komputer menghitung sudut keempat servo agar ujung capit sampai ke sana — rumus trigonometri, dihitung ulang 70+ kali per detik.'
-    : 'Seperti kendali joystick: tiap tombol memutar satu servo. Coba ambil kubus dengan cara ini — jauh lebih sulit, kan? Itulah gunanya IK.', 44, 172, Wd - 88, 38);
-  if (mode === 'ik' && !reach) { ctx.fillStyle = '#ff6b8a'; ctx.font = `bold 30px ${FONT}`; y = wrap(ctx, 'Di luar jangkauan — lengan meraih sejauh mungkin.', 44, y + 46, Wd - 88, 38); }
+    ? L('Gerakkan bola biru. Komputer menghitung sudut keempat servo agar ujung capit sampai ke sana — rumus trigonometri, dihitung ulang 70+ kali per detik.', 'Move the blue ball. The computer calculates all four servo angles so the gripper tip reaches it — trigonometry, recalculated 70+ times per second.')
+    : L('Seperti kendali joystick: tiap tombol memutar satu servo. Coba ambil kubus dengan cara ini — jauh lebih sulit, kan? Itulah gunanya IK.', 'Like joystick control: each button turns one servo. Try picking up a cube this way — much harder, right? That\'s why IK exists.'), 44, 172, Wd - 88, 38);
+  if (mode === 'ik' && !reach) { ctx.fillStyle = '#ff6b8a'; ctx.font = `bold 30px ${FONT}`; y = wrap(ctx, L('Di luar jangkauan — lengan meraih sejauh mungkin.', 'Out of reach — the arm stretches as far as it can.'), 44, y + 46, Wd - 88, 38); }
   // meteran servo
   y = Math.max(y + 30, 300);
   NAMA.forEach((n, i) => {
@@ -492,13 +495,13 @@ function drawInfo() {
   });
   y += 480;
   ctx.fillStyle = '#cdb6ff'; ctx.font = `28px ${FONT}`;
-  ctx.fillText(`Ujung capit: x ${(tp.x - BASE.x) * 100 | 0}  y ${(tp.y - BASE.y) * 100 | 0}  z ${(BASE.z - tp.z) * 100 | 0} cm   ·   capit ${capitT ? 'TUTUP' : 'BUKA'}`, 44, y);
+  ctx.fillText(L(`Ujung capit: x ${(tp.x - BASE.x) * 100 | 0}  y ${(tp.y - BASE.y) * 100 | 0}  z ${(BASE.z - tp.z) * 100 | 0} cm   ·   capit ${capitT ? L('TUTUP', 'CLOSED') : L('BUKA', 'OPEN')}`, `Gripper tip: x ${(tp.x - BASE.x) * 100 | 0}  y ${(tp.y - BASE.y) * 100 | 0}  z ${(BASE.z - tp.z) * 100 | 0} cm   ·   gripper ${capitT ? L('TUTUP', 'CLOSED') : L('BUKA', 'OPEN')}`), 44, y);
   ctx.fillStyle = '#ffd23f'; ctx.font = `bold 38px ${FONT}`;
   const waktu = tSelesai ? tSelesai.toFixed(1) + ' s ✓' : tMulai ? Math.floor((performance.now() - tMulai) / 1000) + ' s' : '—';
-  ctx.fillText(`Misi: kubus ke kotak sewarna  ${skor}/3`, 44, y + 62);
+  ctx.fillText(L(`Misi: kubus ke kotak sewarna  ${skor}/3`, `Mission: cubes to matching boxes  ${skor}/3`), 44, y + 62);
   ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = `27px ${FONT}`;
-  ctx.fillStyle = '#fff'; ctx.font = `600 32px ${FONT}`; ctx.fillText(`⏱ ${waktu}` + (terbaik ? `   ·   Rekor ${terbaik.toFixed(1)} s` : ''), 44, y + 112);
-  ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.font = `26px ${FONT}`; ctx.fillText('Pegang bola: trigger  ·  Capit buka/tutup: tombol grip', 44, y + 158);
+  ctx.fillStyle = '#fff'; ctx.font = `600 32px ${FONT}`; ctx.fillText(`⏱ ${waktu}` + (terbaik ? L(`   ·   Rekor ${terbaik.toFixed(1)} s`, `   ·   Best ${terbaik.toFixed(1)} s`) : ''), 44, y + 112);
+  ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.font = `26px ${FONT}`; ctx.fillText(L('Pegang bola: trigger  ·  Capit buka/tutup: tombol grip', 'Grab ball: trigger  ·  Open/close gripper: grip button'), 44, y + 158);
   info.tex.needsUpdate = true;
 }
 
@@ -524,7 +527,7 @@ renderer.setAnimationLoop(() => {
   if (whineGain) { whineGain.gain.setTargetAtTime(Math.min(.05, gerak / dt / 2500), ac.currentTime, .03); whine.frequency.setTargetAtTime(260 + gerak / dt * 2, ac.currentTime, .05); }
   for (const b of buttons) { if (b.userData.pressT > 0) { b.userData.pressT -= dt; b.position.z = 0.004; } else b.position.z = 0.012; }
   servoDisp.forEach((b, i) => { const v = Math.round(servo[i]); if (b.userData.v !== v) { b.userData.v = v; b.userData.set(v + '°', { t: `S${i + 1} ${NAMA[i]}`, col: hexCss(SC[i]) }); } });
-  const cl = capitT ? 'Capit: tutup' : 'Capit: buka'; if (capitBtn.userData.l !== cl) { capitBtn.userData.l = cl; capitBtn.userData.set(cl); }
+  const cl = capitT ? L('Capit: tutup', 'Gripper: closed') : L('Capit: buka', 'Gripper: open'); if (capitBtn.userData.l !== cl) { capitBtn.userData.l = cl; capitBtn.userData.set(cl); }
   infoT += dt; if (infoT > 0.1) { infoT = 0; drawInfo(); }
   updatePopups();
   renderer.render(scene, camera);

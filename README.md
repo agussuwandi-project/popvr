@@ -12,6 +12,7 @@ Kumpulan game dan pengalaman VR/Mixed Reality berbasis WebXR untuk **Meta Quest 
 | `benteng.html` | Benteng 4 Penjuru | VR, multiplayer 2–4 | Empat penjaga, satu menara; tembak kapal induk bersama-sama |
 | `mecanum.html` | Robot Mecanum | VR | Kendalikan robot holonomik; lihat gaya tiap roda dan rumus kinematikanya |
 | `lengan.html` | Lengan Robot | VR | Lengan 4 servo + capit dengan inverse kinematics; pindahkan 3 kubus ke kotak sewarna |
+| `fpv.html` | Robot SAR (FPV) | VR (duduk) | Kemudikan robot penyelamat dari kameranya; cari 5 korban gempa dengan kamera termal, hindari sumber panas palsu |
 | `linefollower.html` | Line Follower PID | VR | Atur Kp, Ki, Kd dan kecepatan; bandingkan dengan logika ON-OFF 2 sensor |
 | `blaster.html` | Galaksi Blaster | VR | Tembak alien dari platform luar angkasa, kejar combo hingga x4 |
 | `bola.html` | Pop Bola | VR & Mixed Reality | Pecahkan bola dengan tangan atau controller; cocok untuk pemula |
@@ -25,9 +26,13 @@ Kumpulan game dan pengalaman VR/Mixed Reality berbasis WebXR untuk **Meta Quest 
 
 Sebelum pameran, buka setiap game sekali di tiap headset supaya file versi terbaru tersimpan di cache.
 
+## Bahasa ID / EN
+
+Tombol **ID | EN** ada di pojok kanan atas setiap halaman. Pilihan disimpan di browser (di Quest cukup pilih sekali). Bisa juga dipaksa lewat URL: `?lang=en` atau `?lang=id`. Teks ada di `i18n.js` (fungsi `L('teks ID', 'EN text')` dan atribut `data-en`).
+
 ## Mode tes di laptop
 
-Tanpa headset, halaman tetap bisa dibuka di Chrome/Edge. Mode tes laptop aktif otomatis (status di pojok kanan atas: "Mode tes laptop"); klik untuk berinteraksi. Robot Mecanum: WASD + Q/E. Lengan Robot: seret bola biru, roda mouse = naik/turun, Spasi = capit.
+Tanpa headset, halaman tetap bisa dibuka di Chrome/Edge. Mode tes laptop aktif otomatis (status di pojok kanan atas: "Mode tes laptop"); klik untuk berinteraksi. Robot Mecanum: WASD + Q/E. Lengan Robot: seret bola biru, roda mouse = naik/turun, Spasi = capit. Robot SAR: W/S/A/D menyetir, Spasi menandai, seret mouse untuk menoleh.
 
 - `?logo3d=1` — memutar animasi logo 3D tanpa masuk VR.
 - `benteng.html?room=ABCD&name=Budi&auto=1` — langsung masuk ruang Benteng (berguna untuk tes beberapa tab).
@@ -38,11 +43,12 @@ Tanpa headset, halaman tetap bisa dibuka di Chrome/Edge. Mode tes laptop aktif o
 ```
 index.html            Menu utama
 invasi.html, benteng.html, blaster.html, bola.html          Game
-mecanum.html, lengan.html, linefollower.html                Simulasi robotika
+mecanum.html, lengan.html, linefollower.html, fpv.html      Simulasi robotika
 menu.html             Pengalihan ke ./ (alamat lama)
 loader.js             Layar loading animasi logo UVERS
 logo3d.js             Animasi logo 3D saat masuk VR
 tema.css, tema.js     Tema bersama (latar aurora, kartu kaca, tombol)
+i18n.js               Bahasa ID/EN dan tombol pengganti bahasa
 three.module.min.js   Three.js r160 (disimpan lokal, tidak bergantung CDN)
 favicon.svg           Ikon tab
 ```

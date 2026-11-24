@@ -7,6 +7,8 @@
 <meta name="description" content="Pameran VR & Mixed Reality UVERS XR Lab: lima pengalaman interaktif untuk Meta Quest 3.">
 <meta name="theme-color" content="#05060f">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="title-en" content="UVERS XR Lab · VR Exhibition">
+<script src="i18n.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -77,6 +79,19 @@
   .ufo{position:absolute;font-size:46px;animation:bob 3s ease-in-out infinite}
   .ufo.a{top:16%;left:14%}.ufo.b{bottom:14%;right:16%;animation-delay:-1.5s;font-size:36px}
   @keyframes bob{50%{transform:translateY(-14px) rotate(6deg)}}
+  .hero.sar{--accent:#ff7a2a}
+  .hero.sar .badge{background:linear-gradient(90deg,rgba(255,138,61,.25),rgba(255,63,94,.25));border-color:rgba(255,160,110,.5);color:#ffd9c2}
+  .hero.sar .cta{background:linear-gradient(135deg,#ff8a3d,#ff3f5e);box-shadow:0 12px 40px rgba(255,90,60,.45)}
+  .visual.thermal{background:radial-gradient(circle at 50% 50%,rgba(255,122,42,.18),transparent 62%)}
+  .tscreen{width:280px;height:180px;border-radius:18px;border:3px solid #ff7a2a;position:relative;overflow:hidden;
+    background:linear-gradient(180deg,#0a0828 0 38%,#2a1450 38%,#46186e);box-shadow:0 0 50px rgba(255,122,42,.35)}
+  .tscreen .body{position:absolute;left:62px;top:96px;width:150px;height:44px;border-radius:30px;
+    background:radial-gradient(ellipse at 60% 50%,#fffbe0 0 22%,#ffd23f 45%,#ff6a1e 75%,transparent 80%);filter:blur(1.5px)}
+  .tscreen .head{position:absolute;left:198px;top:94px;width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,#fffbe0 0 30%,#ffd23f 60%,#ff6a1e 85%,transparent 90%);filter:blur(1px)}
+  .tscreen .cross{position:absolute;inset:0;background:linear-gradient(#fff,#fff) center/2px 34px no-repeat,linear-gradient(#fff,#fff) center/34px 2px no-repeat;opacity:.8}
+  .tscreen .scan{position:absolute;left:0;right:0;height:30px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.12),transparent);animation:scan 3s linear infinite}
+  .tscreen .lbl{position:absolute;left:12px;top:9px;font-size:11px;font-weight:700;letter-spacing:.12em;color:#ffb37a}
+  @keyframes scan{from{top:-30px}to{top:180px}}
   .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
   /* langkah */
   .seg{display:flex;align-items:center;gap:16px;margin:56px 0 20px}
@@ -93,31 +108,31 @@
   .step span{color:var(--muted);font-size:14px;line-height:1.45}
   footer{margin-top:36px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;color:var(--muted);font-size:14px}
   @media (max-width:1100px){.cards{grid-template-columns:1fr 1fr}}
-  @media (max-width:980px){.hero{grid-template-columns:1fr}.visual{min-height:240px}.cards{grid-template-columns:1fr 1fr}.how{grid-template-columns:1fr 1fr}}
+  @media (max-width:980px){.hero{grid-template-columns:1fr}.hero.sar .visual{order:-1}.visual{min-height:240px}.cards{grid-template-columns:1fr 1fr}.how{grid-template-columns:1fr 1fr}}
   @media (max-width:640px){.cards,.how{grid-template-columns:1fr}main{padding:28px 18px}.hero .txt{padding:28px}}
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
-<body>
+<body data-lang-live="1">
 <script src="loader.js"></script>
 <div class="aurora"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
 <div class="grid"></div>
 <main>
   <header>
-    <div class="brand"><div class="logo">XR</div><div><b>UVERS XR Lab</b><span>Prodi TIF · ME · IE</span></div></div>
-    <div class="pill"><span class="dot"></span>Siap dimainkan di Meta Quest 3</div>
+    <div class="brand"><div class="logo">XR</div><div><b>UVERS XR Lab</b><span data-en="IT · ME · IE Programs">Prodi TIF · ME · IE</span></div></div>
+    <div class="pill"><span class="dot"></span><span data-en="Ready to play on Meta Quest 3">Siap dimainkan di Meta Quest 3</span></div>
   </header>
 
-  <h1>Masuk ke dunia <em>virtual</em> &amp; <em>mixed reality</em></h1>
-  <p class="lead">Tujuh pengalaman interaktif buatan kami: empat game dan tiga simulasi robotika. Pilih satu, pakai headset, lalu tekan <b>Masuk VR</b>.</p>
+  <h1 data-en="Step into <em>virtual</em> &amp; <em>mixed reality</em>">Masuk ke dunia <em>virtual</em> &amp; <em>mixed reality</em></h1>
+  <p class="lead" data-en="Eight interactive experiences we built: four games and four robotics simulations. Pick one, put on the headset, then press <b>Enter VR</b>.">Delapan pengalaman interaktif buatan kami: empat game dan empat simulasi robotika. Pilih satu, pakai headset, lalu tekan <b>Masuk VR</b>.</p>
 
-  <div class="seg"><div class="seg-ic">🎮</div><div><h2>Game</h2><p>Seru dimainkan, cocok untuk semua pengunjung.</p></div><span class="seg-n">4 game</span></div>
+  <div class="seg"><div class="seg-ic">🎮</div><div><h2>Game</h2><p data-en="Fun to play, great for every visitor.">Seru dimainkan, cocok untuk semua pengunjung.</p></div><span class="seg-n" data-en="4 games">4 game</span></div>
   <section class="glass hero">
     <div class="txt">
-      <span class="badge">✦ Baru · Mixed Reality</span>
-      <h2>Invasi Portal</h2>
-      <p>Portal alien terbuka <b>di ruangan nyata</b> di sekitarmu. Tembak musuh, tutup portalnya, pakai gelombang kejut, dan kalahkan kapal induk di detik-detik terakhir.</p>
-      <a class="cta" href="invasi.html">Mainkan sekarang <span>→</span></a>
+      <span class="badge" data-en="✦ New · Mixed Reality">✦ Baru · Mixed Reality</span>
+      <h2 data-en="Portal Invasion">Invasi Portal</h2>
+      <p data-en="Alien portals open <b>in the real room</b> around you. Shoot the enemies, close the portals, use the shockwave, and defeat the mothership in the final seconds.">Portal alien terbuka <b>di ruangan nyata</b> di sekitarmu. Tembak musuh, tutup portalnya, pakai gelombang kejut, dan kalahkan kapal induk di detik-detik terakhir.</p>
+      <a class="cta" href="invasi.html"><span data-en="Play now">Mainkan sekarang</span> <span>→</span></a>
     </div>
     <div class="visual" aria-hidden="true"><div class="portal"></div><div class="ufo a">🛸</div><div class="ufo b">👾</div></div>
   </section>
@@ -125,60 +140,69 @@
   <section class="cards">
     <a class="card glass" href="benteng.html" style="--accent:#5dff8a">
       <div class="icon">🏰</div>
-      <div class="tags"><span class="tag">Multiplayer</span><span class="tag">1–4 pemain</span></div>
-      <h3>Benteng 4 Penjuru</h3>
-      <p>Empat penjaga, satu menara. Bertahan dari serangan segala arah, lalu tembak kapal induk bersama-sama.</p>
-      <div class="go"><span>Buat / gabung ruangan</span><span>→</span></div>
+      <div class="tags"><span class="tag">Multiplayer</span><span class="tag" data-en="1–4 players">1–4 pemain</span></div>
+      <h3 data-en="Four-Corner Fort">Benteng 4 Penjuru</h3>
+      <p data-en="Four guards, one tower. Hold off attacks from every side, then shoot the mothership together.">Empat penjaga, satu menara. Bertahan dari serangan segala arah, lalu tembak kapal induk bersama-sama.</p>
+      <div class="go"><span data-en="Create / join a room">Buat / gabung ruangan</span><span>→</span></div>
     </a>
     <a class="card glass" href="blaster.html" style="--accent:#a066ff">
       <div class="icon">🚀</div>
-      <div class="tags"><span class="tag">Game</span><span class="tag">75 detik</span></div>
-      <h3>Galaksi Blaster</h3>
-      <p>Berdiri di platform luar angkasa dan tembak alien sebelum mereka menabrakmu. Kejar combo hingga x4.</p>
-      <div class="go"><span>Mainkan</span><span>→</span></div>
+      <div class="tags"><span class="tag">Game</span><span class="tag" data-en="75 seconds">75 detik</span></div>
+      <h3 data-en="Galaxy Blaster">Galaksi Blaster</h3>
+      <p data-en="Stand on a space platform and shoot the aliens before they crash into you. Chase a combo up to x4.">Berdiri di platform luar angkasa dan tembak alien sebelum mereka menabrakmu. Kejar combo hingga x4.</p>
+      <div class="go"><span data-en="Play">Mainkan</span><span>→</span></div>
     </a>
     <a class="card glass" href="bola.html" style="--accent:#33ddff">
       <div class="icon">🎈</div>
-      <div class="tags"><span class="tag">Pemula</span><span class="tag">Hand tracking</span></div>
-      <h3>Pop Bola</h3>
-      <p>Pecahkan bola dengan sentuhan tangan atau controller. Cocok untuk yang baru pertama kali mencoba VR.</p>
-      <div class="go"><span>Mainkan</span><span>→</span></div>
+      <div class="tags"><span class="tag" data-en="Beginner">Pemula</span><span class="tag">Hand tracking</span></div>
+      <h3 data-en="Bubble Pop">Pop Bola</h3>
+      <p data-en="Pop the bubbles with a touch of your hand or controller. Perfect for first-time VR users.">Pecahkan bola dengan sentuhan tangan atau controller. Cocok untuk yang baru pertama kali mencoba VR.</p>
+      <div class="go"><span data-en="Play">Mainkan</span><span>→</span></div>
     </a>
   </section>
 
-  <div class="seg"><div class="seg-ic">🤖</div><div><h2>Simulasi Robotika</h2><p>Lihat cara kerja robot dari dalam: kinematika, inverse kinematics, dan kontrol PID.</p></div><span class="seg-n">3 simulasi</span></div>
+  <div class="seg"><div class="seg-ic">🤖</div><div><h2 data-en="Robotics Simulations">Simulasi Robotika</h2><p data-en="See how robots work from the inside: kinematics, inverse kinematics, PID control, and teleoperation.">Lihat cara kerja robot dari dalam: kinematika, inverse kinematics, kontrol PID, dan teleoperasi.</p></div><span class="seg-n" data-en="4 simulations">4 simulasi</span></div>
+  <section class="glass hero sar">
+    <div class="txt">
+      <span class="badge" data-en="✦ New · First person">✦ Baru · First person</span>
+      <h2 data-en="SAR Robot (FPV)">Robot SAR (FPV)</h2>
+      <p data-en="See <b>through a rescue robot's camera</b> in post-earthquake rubble. Drive through the debris, use the thermal camera, and find 5 victims, but not everything hot is a victim.">Lihat <b>dari kamera robot penyelamat</b> di reruntuhan pascagempa. Kemudikan robot menembus puing, pakai kamera termal, dan temukan 5 korban, tapi tidak semua yang panas adalah korban.</p>
+      <a class="cta" href="fpv.html"><span data-en="Start the mission">Mulai misi</span> <span>→</span></a>
+    </div>
+    <div class="visual thermal" aria-hidden="true"><div class="tscreen"><div class="scan"></div><div class="body"></div><div class="head"></div><div class="cross"></div><div class="lbl" data-en="THERMAL CAMERA">KAMERA TERMAL</div></div></div>
+  </section>
   <section class="cards">
     <a class="card glass" href="mecanum.html" style="--accent:#ffb020">
       <div class="icon">🤖</div>
-      <div class="tags"><span class="tag">Simulasi</span><span class="tag">Robotika</span></div>
-      <h3>Robot Mecanum</h3>
-      <p>Kendalikan robot holonomic yang bisa bergeser ke samping. Lihat gaya di tiap roda dan rumus kinematikanya secara langsung.</p>
-      <div class="go"><span>Buka simulasi</span><span>→</span></div>
+      <div class="tags"><span class="tag" data-en="Simulation">Simulasi</span><span class="tag" data-en="Robotics">Robotika</span></div>
+      <h3 data-en="Mecanum Robot">Robot Mecanum</h3>
+      <p data-en="Drive a holonomic robot that can slide sideways. See the force on each wheel and its kinematics formula live.">Kendalikan robot holonomic yang bisa bergeser ke samping. Lihat gaya di tiap roda dan rumus kinematikanya secara langsung.</p>
+      <div class="go"><span data-en="Open simulation">Buka simulasi</span><span>→</span></div>
     </a>
     <a class="card glass" href="lengan.html" style="--accent:#c084fc">
       <div class="icon">🦾</div>
-      <div class="tags"><span class="tag">Baru</span><span class="tag">Simulasi</span><span class="tag">Robotika</span></div>
-      <h3>Lengan Robot</h3>
-      <p>Pegang bola target, lengan 4 servo mengikutinya lewat inverse kinematics. Pindahkan 3 kubus ke kotak sewarna.</p>
-      <div class="go"><span>Buka simulasi</span><span>→</span></div>
+      <div class="tags"><span class="tag" data-en="New">Baru</span><span class="tag" data-en="Simulation">Simulasi</span><span class="tag" data-en="Robotics">Robotika</span></div>
+      <h3 data-en="Robot Arm">Lengan Robot</h3>
+      <p data-en="Grab the target ball and the 4-servo arm follows it with inverse kinematics. Move 3 cubes into the matching boxes.">Pegang bola target, lengan 4 servo mengikutinya lewat inverse kinematics. Pindahkan 3 kubus ke kotak sewarna.</p>
+      <div class="go"><span data-en="Open simulation">Buka simulasi</span><span>→</span></div>
     </a>
     <a class="card glass" href="linefollower.html" style="--accent:#3ee6c4">
       <div class="icon">🛤️</div>
-      <div class="tags"><span class="tag">Baru</span><span class="tag">Simulasi</span><span class="tag">Kontrol PID</span></div>
+      <div class="tags"><span class="tag" data-en="New">Baru</span><span class="tag" data-en="Simulation">Simulasi</span><span class="tag" data-en="PID Control">Kontrol PID</span></div>
       <h3>Line Follower PID</h3>
-      <p>Atur Kp, Ki, Kd dan lihat langsung bedanya: keluar di tikungan, zig-zag, atau mulus. Kejar satu putaran di bawah 9 detik.</p>
-      <div class="go"><span>Buka simulasi</span><span>→</span></div>
+      <p data-en="Tune Kp, Ki, Kd and see the difference right away: off the track, zig-zag, or smooth. Chase a lap under 9 seconds.">Atur Kp, Ki, Kd dan lihat langsung bedanya: keluar di tikungan, zig-zag, atau mulus. Kejar satu putaran di bawah 9 detik.</p>
+      <div class="go"><span data-en="Open simulation">Buka simulasi</span><span>→</span></div>
     </a>
   </section>
 
   <section class="glass how">
-    <div class="step"><div class="num">1</div><div><b>Pakai headset</b><span>Atur tali sampai gambar terlihat tajam.</span></div></div>
-    <div class="step"><div class="num">2</div><div><b>Pilih aplikasi</b><span>Tunjuk kartu lalu tarik trigger atau pinch.</span></div></div>
-    <div class="step"><div class="num">3</div><div><b>Tekan Masuk VR</b><span>Atau "Mulai Mixed Reality" di Invasi Portal dan Pop Bola.</span></div></div>
-    <div class="step"><div class="num">4</div><div><b>Jaga jarak aman</b><span>Beri ruang ±1 m di sekitar pemain.</span></div></div>
+    <div class="step"><div class="num">1</div><div><b data-en="Put on the headset">Pakai headset</b><span data-en="Adjust the strap until the image looks sharp.">Atur tali sampai gambar terlihat tajam.</span></div></div>
+    <div class="step"><div class="num">2</div><div><b data-en="Pick an app">Pilih aplikasi</b><span data-en="Point at a card, then pull the trigger or pinch.">Tunjuk kartu lalu tarik trigger atau pinch.</span></div></div>
+    <div class="step"><div class="num">3</div><div><b data-en="Press Enter VR">Tekan Masuk VR</b><span data-en="Or &quot;Start Mixed Reality&quot; in Portal Invasion and Bubble Pop.">Atau "Mulai Mixed Reality" di Invasi Portal dan Pop Bola.</span></div></div>
+    <div class="step"><div class="num">4</div><div><b data-en="Keep a safe distance">Jaga jarak aman</b><span data-en="Leave ±1 m of space around the player.">Beri ruang ±1 m di sekitar pemain.</span></div></div>
   </section>
 
-  <footer><span>© UVERS XR Lab · Pameran Kampus</span><span>Dibuat dengan WebXR &amp; Three.js</span></footer>
+  <footer><span data-en="© UVERS XR Lab · Campus Exhibition">© UVERS XR Lab · Pameran Kampus</span><span data-en="Built with WebXR &amp; Three.js">Dibuat dengan WebXR &amp; Three.js</span></footer>
 </main>
 </body>
 </html>

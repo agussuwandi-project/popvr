@@ -7,6 +7,9 @@
 <meta name="description" content="Benteng 4 Penjuru: game VR co-op 1–4 pemain dalam satu ruangan.">
 <meta name="theme-color" content="#05060f">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="title-en" content="Four-Corner Fort">
+<meta name="description-en" content="Four-Corner Fort: a co-op multiplayer VR game for 1-4 players.">
+<script src="i18n.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="tema.css">
@@ -29,21 +32,21 @@
 <div class="xr-aura" aria-hidden="true"><i></i><i></i><i></i></div>
 <header class="xr-top">
   <div class="xr-left"><a class="xr-back" href="./">← Menu</a>
-    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span>Benteng 4 Penjuru</span></div></div></div>
-  <div class="xr-pill" id="net">menyambung…</div>
+    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span data-en="Four-Corner Fort">Benteng 4 Penjuru</span></div></div></div>
+  <div class="xr-pill" id="net" data-en="connecting…" data-en-if="menyambung…">menyambung…</div>
 </header>
 <div id="ov">
-  <div class="xr-head"><div class="xr-icon">🏰</div><div><div class="tags"><span class="tag hot">Multiplayer</span><span class="tag">Co-op</span><span class="tag">1–4 pemain</span></div><h1>Benteng 4 Penjuru</h1></div></div>
-  <p>Empat penjaga berdiri saling membelakangi di puncak menara. Alien datang dari segala arah. Lindungi Kristal Inti, lalu kalahkan kapal induk dengan menembak <b>bersama-sama</b>!</p>
+  <div class="xr-head"><div class="xr-icon">🏰</div><div><div class="tags"><span class="tag hot">Multiplayer</span><span class="tag">Co-op</span><span class="tag" data-en="1–4 players">1–4 pemain</span></div><h1 data-en="Four-Corner Fort">Benteng 4 Penjuru</h1></div></div>
+  <p data-en="Four guards stand back to back at the top of a tower. Aliens come from every direction. Protect the Core Crystal, then defeat the mothership by shooting <b>together</b>!">Empat penjaga berdiri saling membelakangi di puncak menara. Alien datang dari segala arah. Lindungi Kristal Inti, lalu kalahkan kapal induk dengan menembak <b>bersama-sama</b>!</p>
   <div id="stepJoin">
-    <div class="row"><input id="inName" maxlength="12" placeholder="Nama kamu"></div>
-    <div class="row"><button class="btn primary" id="btnCreate">Buat ruangan baru <span class="arw">→</span></button></div>
-    <div class="row"><input id="inCode" maxlength="4" placeholder="KODE"><button class="btn" id="btnJoin">Gabung ruangan</button></div>
+    <div class="row"><input id="inName" maxlength="12" placeholder="Nama kamu" data-en-ph="Your name"></div>
+    <div class="row"><button class="btn primary" id="btnCreate" data-en="Create new room <span class=&quot;arw&quot;>→</span>">Buat ruangan baru <span class="arw">→</span></button></div>
+    <div class="row"><input id="inCode" maxlength="4" placeholder="KODE" data-en-ph="CODE"><button class="btn" id="btnJoin" data-en="Join room">Gabung ruangan</button></div>
   </div>
   <div id="stepLobby" hidden>
-    <div class="code">Kode ruangan (bagikan ke pemain lain):<b id="codeOut">----</b></div>
+    <div class="code" data-en="Room code (share with other players):<b id=&quot;codeOut&quot;>----</b>">Kode ruangan (bagikan ke pemain lain):<b id="codeOut">----</b></div>
     <div id="plist"></div>
-    <div class="row"><button class="btn primary" id="btnVR" disabled>Masuk VR <span class="arw">→</span></button><button class="btn" id="btnAR" disabled>Mixed Reality</button></div>
+    <div class="row"><button class="btn primary" id="btnVR" disabled data-en="Enter VR <span class=&quot;arw&quot;>→</span>">Masuk VR <span class="arw">→</span></button><button class="btn" id="btnAR" disabled>Mixed Reality</button></div>
   </div>
   <div id="msg"></div>
 </div>
@@ -69,10 +72,10 @@ const BOSS_HP_PER_PLAYER = 12;
 const TOGETHER_MS = 1500;  // jendela waktu "menembak bersama" untuk melukai boss
 const MAX_P = 4;
 const SEATS = [
-  { name: 'UTARA',   color: 0x33e0ff, css: '#33e0ff' },
-  { name: 'BARAT',   color: 0xff5adc, css: '#ff5adc' },   // kursi berikutnya berputar berlawanan jarum jam
-  { name: 'SELATAN', color: 0xffd23f, css: '#ffd23f' },
-  { name: 'TIMUR',   color: 0x5dff8a, css: '#5dff8a' },
+  { name: L('UTARA', 'NORTH'),   color: 0x33e0ff, css: '#33e0ff' },
+  { name: L('BARAT', 'WEST'),   color: 0xff5adc, css: '#ff5adc' },   // kursi berikutnya berputar berlawanan jarum jam
+  { name: L('SELATAN', 'SOUTH'), color: 0xffd23f, css: '#ffd23f' },
+  { name: L('TIMUR', 'EAST'),   color: 0x5dff8a, css: '#5dff8a' },
 ];
 const ENEMY = {
   drone: { hp: 1, pts: 10, r: .38, spd: [1.3, 2.2], color: 0xff33cc },
@@ -116,7 +119,7 @@ function makeLocalTransport() {
   ch.postMessage({ op: 'hello' });
   const dis = []; addEventListener('pagehide', () => { for (const p of dis) ch.postMessage({ op: 'set', path: p, val: null }); });
   const send = m => { apply(m); ch.postMessage(m); };
-  setNet(true, 'Mode lokal (antar-tab)');
+  setNet(true, L('Mode lokal (antar-tab)', 'Local mode (between tabs)'));
   return {
     kind: 'local', now: () => Date.now(), ready: new Promise(r => setTimeout(r, 300)),
     set: (p, v) => send({ op: 'set', path: p, val: v }),
@@ -135,7 +138,7 @@ async function makeFirebaseTransport(cfg) {
   const db = fd.getDatabase(fa.initializeApp(cfg));
   let offset = 0;
   fd.onValue(fd.ref(db, '.info/serverTimeOffset'), s => { offset = s.val() || 0; });
-  fd.onValue(fd.ref(db, '.info/connected'), s => setNet(!!s.val(), s.val() ? 'Online (Firebase)' : 'Terputus — mencoba lagi…'));
+  fd.onValue(fd.ref(db, '.info/connected'), s => setNet(!!s.val(), s.val() ? L('Online (Firebase)', 'Online (Firebase)') : L('Terputus — mencoba lagi…', 'Disconnected — retrying…')));
   const Rf = p => fd.ref(db, p);
   return {
     kind: 'firebase', now: () => Date.now() + offset, ready: Promise.resolve(),
@@ -149,7 +152,7 @@ async function makeFirebaseTransport(cfg) {
 const useFirebase = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith('ISI_') && FIREBASE_CONFIG.databaseURL && new URLSearchParams(location.search).get('lokal') !== '1';
 let net;
 try { net = useFirebase ? await makeFirebaseTransport(FIREBASE_CONFIG) : makeLocalTransport(); }
-catch (e) { console.error(e); net = makeLocalTransport(); setNet(false, 'Firebase gagal — mode lokal'); }
+catch (e) { console.error(e); net = makeLocalTransport(); setNet(false, L('Firebase gagal — mode lokal', 'Firebase failed — local mode')); }
 await net.ready;
 
 // =================== SCENE ===================
@@ -284,11 +287,11 @@ const isHost = () => { const p = present(); return p.length && p[0] === SLOT; };
 function genCode() { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 4; i++) s += A[Math.floor(Math.random() * A.length)]; return s; }
 async function joinRoom(code, name) {
   code = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (code.length !== 4) throw new Error('Kode ruangan harus 4 karakter.');
+  if (code.length !== 4) throw new Error(L('Kode ruangan harus 4 karakter.', 'Room code must be 4 characters.'));
   const ps = (await net.get(`rooms/${code}/players`)) || {}; const t = net.now();
   let slot = -1; for (let i = 0; i < MAX_P; i++) { const p = ps['p' + i]; if (!p || t - (p.t || 0) > 8000) { slot = i; break; } }
-  if (slot < 0) throw new Error('Ruangan penuh (maksimal 4 pemain).');
-  ROOM = code; SLOT = slot; NAME = (name || 'Pemain').slice(0, 12);
+  if (slot < 0) throw new Error(L('Ruangan penuh (maksimal 4 pemain).', 'Room is full (max 4 players).'));
+  ROOM = code; SLOT = slot; NAME = (name || L('Pemain', 'Player')).slice(0, 12);
   net.onDisconnectRemove(`${base()}/players/p${slot}`);
   publishSelf();
   net.on(`${base()}/players`, v => { players = v || {}; renderLobby(); });
@@ -418,13 +421,13 @@ function drawBoard() {
   glass(ctx, W, H, SEATS[Math.max(0, SLOT)].css);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffe9a3'; ctx.font = `600 30px ${FONT}`;
-  ctx.fillText(`${EVENT_NAME}  ·  BENTENG 4 PENJURU  ·  RUANG ${ROOM || '----'}  ·  POS ${SEATS[Math.max(0, SLOT)].name}`, W / 2, 48);
+  ctx.fillText(`${EVENT_NAME}  ·  ${L('BENTENG 4 PENJURU', 'FOUR-CORNER FORT')}  ·  ${L('RUANG', 'ROOM')} ${ROOM || '----'}  ·  ${L('POS', 'POST')} ${SEATS[Math.max(0, SLOT)].name}`, W / 2, 48);
   if (st === 'play' && cd > 0) {
     ctx.fillStyle = '#fff'; ctx.font = `700 200px ${FONT}`; ctx.fillText(cd, W / 2, 260);
-    ctx.font = `600 40px ${FONT}`; ctx.fillStyle = '#c9cfe6'; ctx.fillText('Bersiap! Jaga arah depanmu', W / 2, 420);
+    ctx.font = `600 40px ${FONT}`; ctx.fillStyle = '#c9cfe6'; ctx.fillText(L('Bersiap! Jaga arah depanmu', 'Get ready! Guard your side'), W / 2, 420);
   } else if (st === 'play') {
     ctx.font = `600 32px ${FONT}`; ctx.fillStyle = '#c9cfe6';
-    ctx.fillText('WAKTU', 200, 118); ctx.fillText('SKOR TIM', W / 2, 118); ctx.fillText('KRISTAL', W - 200, 118);
+    ctx.fillText(L('WAKTU', 'TIME'), 200, 118); ctx.fillText(L('SKOR TIM', 'TEAM SCORE'), W / 2, 118); ctx.fillText(L('KRISTAL', 'CRYSTAL'), W - 200, 118);
     ctx.fillStyle = remain <= 10 ? '#ff5577' : '#7dffc0'; ctx.font = `700 96px ${FONT}`; ctx.fillText(remain, 200, 205);
     ctx.fillStyle = '#fff'; ctx.font = `700 120px ${FONT}`; ctx.fillText(game.team || 0, W / 2, 210);
     const lv = Math.max(0, game.lives ?? LIVES); ctx.fillStyle = 'rgba(255,255,255,.12)'; rr(ctx, W - 330, 182, 260, 40, 20); ctx.fill();
@@ -432,15 +435,15 @@ function drawBoard() {
     ctx.fillStyle = '#fff'; ctx.font = `700 34px ${FONT}`; ctx.fillText(`${lv}/${LIVES}`, W - 200, 250);
     if (game.boss?.on) {
       const need = Math.max(1, pres.length), cb = game.boss.cb || 0;
-      ctx.fillStyle = '#ff5577'; ctx.font = `700 52px ${FONT}`; ctx.fillText(`KAPAL INDUK  ${game.boss.hp}/${game.boss.max}`, W / 2, 315);
+      ctx.fillStyle = '#ff5577'; ctx.font = `700 52px ${FONT}`; ctx.fillText(L(`KAPAL INDUK  ${game.boss.hp}/${game.boss.max}`, `MOTHERSHIP  ${game.boss.hp}/${game.boss.max}`), W / 2, 315);
       ctx.fillStyle = cb >= need ? '#7dffc0' : '#ffe27a'; ctx.font = `700 40px ${FONT}`;
-      ctx.fillText(cb >= need ? 'PERISAI TEMBUS! TERUS TEMBAK!' : `Tembak BERSAMA ke atas: ${cb}/${need} pemain`, W / 2, 372);
+      ctx.fillText(cb >= need ? L('PERISAI TEMBUS! TERUS TEMBAK!', 'SHIELD BROKEN! KEEP SHOOTING!') : L(`Tembak BERSAMA ke atas: ${cb}/${need} pemain`, `Shoot UP TOGETHER: ${cb}/${need} players`), W / 2, 372);
     }
   } else {
     ctx.fillStyle = '#fff'; ctx.font = `700 84px ${FONT}`;
-    ctx.fillText(st === 'over' ? (game.win ? 'BENTENG SELAMAT!' : 'BENTENG JEBOL') : 'BENTENG 4 PENJURU', W / 2, 140);
+    ctx.fillText(st === 'over' ? (game.win ? L('BENTENG SELAMAT!', 'FORT SAVED!') : L('BENTENG JEBOL', 'FORT BREACHED')) : L('BENTENG 4 PENJURU', 'FOUR-CORNER FORT'), W / 2, 140);
     ctx.font = `600 36px ${FONT}`; ctx.fillStyle = '#c9cfe6';
-    ctx.fillText(st === 'over' ? `Skor tim ${game.team || 0}` : 'Tunggu semua pemain masuk, lalu tembak target untuk mulai', W / 2, 215);
+    ctx.fillText(st === 'over' ? L(`Skor tim ${game.team || 0}`, `Team score ${game.team || 0}`) : L('Tunggu semua pemain masuk, lalu tembak target untuk mulai', 'Wait for all players to join, then shoot the target to start'), W / 2, 215);
   }
   // daftar pemain + skor
   const y0 = st === 'play' && cd === 0 ? 430 : 300, best = st === 'over' ? Object.entries(sc).sort((a, b) => b[1] - a[1])[0]?.[0] : null;
@@ -449,10 +452,10 @@ function drawBoard() {
     ctx.fillStyle = on ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.03)'; rr(ctx, x - 140, y0, 280, 110, 22); ctx.fill();
     ctx.strokeStyle = on ? SEATS[i].css : 'rgba(255,255,255,.15)'; ctx.lineWidth = 3; rr(ctx, x - 140, y0, 280, 110, 22); ctx.stroke();
     ctx.fillStyle = on ? SEATS[i].css : 'rgba(255,255,255,.35)'; ctx.font = `700 34px ${FONT}`;
-    ctx.fillText((best === 'p' + i ? '★ ' : '') + (on ? (p.n || SEATS[i].name) : 'kosong'), x, y0 + 38);
+    ctx.fillText((best === 'p' + i ? '★ ' : '') + (on ? (p.n || SEATS[i].name) : L('kosong', 'empty')), x, y0 + 38);
     ctx.fillStyle = '#fff'; ctx.font = `600 30px ${FONT}`; ctx.fillText(on ? `${SEATS[i].name} · ${sc['p' + i] || 0}` : SEATS[i].name, x, y0 + 80);
   }
-  if (st !== 'play') { ctx.fillStyle = '#ffe9a3'; ctx.font = `700 36px ${FONT}`; ctx.fillText(st === 'over' ? 'Tembak target untuk main lagi  ·  ★ = MVP' : '', W / 2, 500); }
+  if (st !== 'play') { ctx.fillStyle = '#ffe9a3'; ctx.font = `700 36px ${FONT}`; ctx.fillText(st === 'over' ? L('Tembak target untuk main lagi  ·  ★ = MVP', 'Shoot the target to play again  ·  ★ = MVP') : '', W / 2, 500); }
   board.tex.needsUpdate = true;
 }
 
@@ -460,11 +463,11 @@ function drawBoard() {
 const startT = new THREE.Group(); scene.add(startT);
 for (let i = 0; i < 3; i++) startT.add(new THREE.Mesh(new THREE.TorusGeometry(.28 - i * .09, .028, 8, 48), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xffffff : 0xffb020 })));
 const startHit = new THREE.Mesh(new THREE.SphereGeometry(.38, 10, 8), new THREE.MeshBasicMaterial({ visible: false })); startHit.userData = { kind: 'start' }; startT.add(startHit);
-{ const l = labelSprite('TEMBAK UNTUK MULAI', '#ffb020', .9); l.position.y = .45; startT.add(l); }
+{ const l = labelSprite(L('TEMBAK UNTUK MULAI', 'SHOOT TO START'), '#ffb020', .9); l.position.y = .45; startT.add(l); }
 const exitT = new THREE.Group(); scene.add(exitT);
 exitT.add(new THREE.Mesh(new THREE.TorusGeometry(.14, .02, 8, 40), new THREE.MeshBasicMaterial({ color: 0xff4466 })));
 { const x1 = new THREE.Mesh(new THREE.BoxGeometry(.14, .026, .01), new THREE.MeshBasicMaterial({ color: 0xffffff })); x1.rotation.z = Math.PI / 4; const x2 = x1.clone(); x2.rotation.z = -Math.PI / 4; exitT.add(x1, x2);
-  const l = labelSprite('KELUAR', '#ff5a78', .38); l.position.y = .24; exitT.add(l); }
+  const l = labelSprite(L('KELUAR', 'EXIT'), '#ff5a78', .38); l.position.y = .24; exitT.add(l); }
 const exitHit = new THREE.Mesh(new THREE.SphereGeometry(.22, 10, 8), new THREE.MeshBasicMaterial({ visible: false })); exitHit.userData = { kind: 'exit' }; exitT.add(exitHit);
 
 // =================== LOGIKA RONDE ===================
@@ -474,7 +477,7 @@ function onGame(v) {
   if (v.st === 'play' && was.startAt !== v.startAt) { tone(440, .1, 'square', .1); setTimeout(() => tone(660, .1, 'square', .1), 120); hostMem.reset(); }
   if (v.st === 'over' && was.st === 'play') { v.win ? [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, .25, 'triangle', .2), i * 130)) : [660, 520, 400, 260].forEach((f, i) => setTimeout(() => tone(f, .25, 'triangle', .2), i * 160)); }
   if (v.st === 'play' && (was.lives ?? LIVES) > (v.lives ?? LIVES)) { hurtT = .45; boom(.6, .6, 400); for (const g of guns) haptic(g, .8, 150); }
-  if (v.boss?.on && !was.boss?.on) { tone(70, 1.5, 'sawtooth', .25, 1.4); popup(new THREE.Vector3(0, BOSS_Y - 2.5, 0), 'KAPAL INDUK DATANG!', '#ff5577', 3); }
+  if (v.boss?.on && !was.boss?.on) { tone(70, 1.5, 'sawtooth', .25, 1.4); popup(new THREE.Vector3(0, BOSS_Y - 2.5, 0), L('KAPAL INDUK DATANG!', 'MOTHERSHIP INCOMING!'), '#ff5577', 3); }
 }
 function startRound() {
   if (game.st === 'play') return;
@@ -604,8 +607,8 @@ addEventListener('pointerup', ev => {
 const ov = $('ov'), msg = $('msg');
 $('inName').value = params.get('name') || localStorage.getItem('b4_name') || '';
 async function doJoin(code) {
-  const name = $('inName').value.trim() || 'Pemain'; try { localStorage.setItem('b4_name', name); } catch (e) {}
-  msg.textContent = 'Menyambung…';
+  const name = $('inName').value.trim() || L('Pemain', 'Player'); try { localStorage.setItem('b4_name', name); } catch (e) {}
+  msg.textContent = L('Menyambung…', 'Connecting…');
   try { await joinRoom(code, name); $('stepJoin').hidden = true; $('stepLobby').hidden = false; $('codeOut').textContent = ROOM; msg.textContent = ''; checkXR(); { const u = new URLSearchParams(location.search); u.set('room', ROOM); u.delete('auto'); history.replaceState(null, '', '?' + u); } }
   catch (e) { msg.textContent = e.message || String(e); }
 }
@@ -614,13 +617,13 @@ $('btnJoin').onclick = () => doJoin($('inCode').value);
 function renderLobby() {
   const pres = present();
   $('plist').innerHTML = SEATS.map((s, i) => { const p = players['p' + i], on = pres.includes(i);
-    return `<div class="pl" style="border-color:${on ? s.css : 'rgba(255,255,255,.15)'}"><b style="color:${on ? s.css : '#778'}">${on ? (p.n || '').replace(/[<>&]/g, '') : 'kosong'}${i === SLOT ? ' (kamu)' : ''}</b>${s.name}</div>`; }).join('');
+    return `<div class="pl" style="border-color:${on ? s.css : 'rgba(255,255,255,.15)'}"><b style="color:${on ? s.css : '#778'}">${on ? (p.n || '').replace(/[<>&]/g, '') : L('kosong', 'empty')}${i === SLOT ? L(' (kamu)', ' (you)') : ''}</b>${s.name}</div>`; }).join('');
 }
 async function checkXR() {
-  if (!navigator.xr) { msg.textContent = 'WebXR tidak tersedia. Mode tes laptop: seret untuk menoleh, klik untuk menembak.'; return; }
+  if (!navigator.xr) { msg.textContent = L('WebXR tidak tersedia. Mode tes laptop: seret untuk menoleh, klik untuk menembak.', 'WebXR not available. Laptop test mode: drag to look around, click to shoot.'); return; }
   const [ar, vr] = await Promise.all([navigator.xr.isSessionSupported('immersive-ar').catch(() => false), navigator.xr.isSessionSupported('immersive-vr').catch(() => false)]);
   $('btnAR').disabled = !ar; $('btnVR').disabled = !vr;
-  if (!vr) msg.textContent = 'Perangkat XR tidak terdeteksi. Mode tes laptop: seret untuk menoleh, klik untuk menembak.';
+  if (!vr) msg.textContent = L('Perangkat XR tidak terdeteksi. Mode tes laptop: seret untuk menoleh, klik untuk menembak.', 'No XR device detected. Laptop test mode: drag to look around, click to shoot.');
 }
 async function startXR(kind) {
   initAudio();
@@ -629,7 +632,7 @@ async function startXR(kind) {
     xrKind = kind; applyEnv(); camera.rotation.set(0, 0, 0);
     s.addEventListener('end', () => { xrKind = null; applyEnv(); ov.classList.remove('hide'); camera.position.set(0, 1.6, 0); });
     await renderer.xr.setSession(s); ov.classList.add('hide');
-  } catch (e) { msg.textContent = 'Gagal memulai: ' + e.message; xrKind = null; applyEnv(); }
+  } catch (e) { msg.textContent = L('Gagal memulai: ', 'Failed to start: ') + e.message; xrKind = null; applyEnv(); }
 }
 $('btnVR').onclick = () => startXR('vr'); $('btnAR').onclick = () => startXR('ar');
 if (params.get('room')) { $('inCode').value = params.get('room'); if (params.get('auto') === '1') doJoin(params.get('room')); }

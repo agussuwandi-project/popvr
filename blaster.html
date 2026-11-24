@@ -7,6 +7,9 @@
 <meta name="description" content="Galaksi Blaster: tembak alien dari platform luar angkasa dalam 75 detik.">
 <meta name="theme-color" content="#05060f">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="title-en" content="Galaxy Blaster VR">
+<meta name="description-en" content="Galaxy Blaster: shoot aliens from a space platform in VR.">
+<script src="i18n.js"></script>
 <link rel="stylesheet" href="tema.css">
 <style>
   :root{--accent:#a066ff;--a1:#a066ff;--a2:#ff3fa4}
@@ -23,20 +26,20 @@
 <div class="xr-aura" aria-hidden="true"><i></i><i></i><i></i></div>
 <header class="xr-top">
   <div class="xr-left"><a class="xr-back" href="./">← Menu</a>
-    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span>Galaksi Blaster</span></div></div></div>
-  <div class="xr-pill" id="xrStatus">Memeriksa perangkat…</div>
+    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span data-en="Galaxy Blaster">Galaksi Blaster</span></div></div></div>
+  <div class="xr-pill" id="xrStatus" data-en="Checking device…" data-en-if="Memeriksa perangkat…">Memeriksa perangkat…</div>
 </header>
 <div id="ov">
-  <div class="xr-head"><div class="xr-icon">🚀</div><div><div class="tags"><span class="tag hot">Game</span><span class="tag">75 detik</span><span class="tag">Combo x4</span></div><h1>Galaksi Blaster</h1></div></div>
-  <p>Berdiri di platform luar angkasa dan tembak alien sebelum mereka menabrakmu. Tembak beruntun untuk combo hingga <b>x4</b>.</p>
-  <div class="btns"><button class="btn primary" id="btnVR" disabled>Masuk VR <span class="arw">→</span></button></div>
-  <div id="msg">Memeriksa perangkat…</div>
+  <div class="xr-head"><div class="xr-icon">🚀</div><div><div class="tags"><span class="tag hot">Game</span><span class="tag" data-en="75 seconds">75 detik</span><span class="tag">Combo x4</span></div><h1 data-en="Galaxy Blaster">Galaksi Blaster</h1></div></div>
+  <p data-en="Stand on a space platform and shoot the aliens before they crash into you. Chain your hits for a combo up to <b>x4</b>.">Berdiri di platform luar angkasa dan tembak alien sebelum mereka menabrakmu. Tembak beruntun untuk combo hingga <b>x4</b>.</p>
+  <div class="btns"><button class="btn primary" id="btnVR" disabled data-en="Enter VR <span class=&quot;arw&quot;>→</span>">Masuk VR <span class="arw">→</span></button></div>
+  <div id="msg" data-en="Checking device…" data-en-if="Memeriksa perangkat…">Memeriksa perangkat…</div>
 </div>
 <script type="module">
 import * as THREE from 'three';
 
 // ====== PENGATURAN (silakan ubah) ======
-const EVENT_NAME = 'Pameran Kampus UVERS';
+const EVENT_NAME = L('Pameran Kampus UVERS', 'UVERS Campus Exhibition');
 const DURATION = 75;      // detik per ronde
 const LIVES = 3;          // nyawa
 const ENEMY = {
@@ -83,19 +86,19 @@ document.body.appendChild(renderer.domElement);
 // ---- tombol Masuk VR (menggantikan VRButton bawaan agar senada dengan tema)
 {
   const ov = document.getElementById('ov'), msg = document.getElementById('msg'), btnVR = document.getElementById('btnVR');
-  const laptop = 'Mode tes laptop: klik target hijau untuk mulai, klik musuh untuk menembak.';
+  const laptop = L('Mode tes laptop: klik target hijau untuk mulai, klik musuh untuk menembak.', 'Laptop test mode: click the green target to start, click enemies to shoot.');
   (async () => {
-    if (!navigator.xr) { msg.textContent = 'WebXR tidak tersedia. ' + laptop; return; }
+    if (!navigator.xr) { msg.textContent = L('WebXR tidak tersedia. ', 'WebXR not available. ') + laptop; return; }
     const ok = await navigator.xr.isSessionSupported('immersive-vr').catch(() => false);
     btnVR.disabled = !ok;
-    msg.textContent = ok ? 'Siap! Tekan Masuk VR, lalu pakai headset.' : 'Headset tidak terdeteksi. ' + laptop;
+    msg.textContent = ok ? L('Siap! Tekan Masuk VR, lalu pakai headset.', 'Ready! Press Enter VR, then put on the headset.') : L('Headset tidak terdeteksi. ', 'No headset detected. ') + laptop;
   })();
   btnVR.onclick = async () => {
     try {
       const s = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] });
       s.addEventListener('end', () => ov.classList.remove('hide'));
       await renderer.xr.setSession(s); ov.classList.add('hide');
-    } catch (e) { msg.textContent = 'Gagal memulai: ' + e.message; }
+    } catch (e) { msg.textContent = L('Gagal memulai: ', 'Failed to start: ') + e.message; }
   };
 }
 
@@ -161,7 +164,7 @@ const startLabel = makePanel(1.2, 0.2, 768, 128);
 startLabel.mesh.position.set(0, 0.6, 0); startT.add(startLabel.mesh);
 { const { ctx, c } = startLabel; glass(ctx, c.width, c.height, 'rgba(125,255,160,.85)', 30);
   ctx.fillStyle = '#7dffa0'; ctx.font = `bold 56px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('TEMBAK UNTUK MULAI', c.width / 2, c.height / 2 + 4); startLabel.tex.needsUpdate = true; }
+  ctx.fillText(L('TEMBAK UNTUK MULAI', 'SHOOT TO START'), c.width / 2, c.height / 2 + 4); startLabel.tex.needsUpdate = true; }
 
 
 // ---------- Tombol KELUAR (tembak untuk keluar dari VR/MR) ----------
@@ -174,7 +177,7 @@ exitHit.userData.isExit = true; exitHit.userData.kind = 'exit'; exitT.add(exitHi
 const exitLabel = makePanel(0.42, 0.1, 384, 96); exitLabel.mesh.position.y = 0.26; exitT.add(exitLabel.mesh);
 { const { ctx, c } = exitLabel; glass(ctx, c.width, c.height, 'rgba(255,90,120,.9)', 26);
   ctx.fillStyle = '#fff'; ctx.font = `700 44px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('KELUAR', c.width / 2, c.height / 2 + 3); exitLabel.tex.needsUpdate = true; }
+  ctx.fillText(L('KELUAR', 'EXIT'), c.width / 2, c.height / 2 + 3); exitLabel.tex.needsUpdate = true; }
 function exitXR() { try { renderer.xr.getSession()?.end(); } catch (e) {} }
 
 // ---------- Suara ----------
@@ -301,38 +304,38 @@ function drawBoard() {
   const { ctx, c } = board, W = c.width; ctx.clearRect(0, 0, W, c.height);
   glass(ctx, W, c.height, 'rgba(170,120,255,.9)');
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#b9a6ff'; ctx.font = `34px ${FONT}`; ctx.fillText(EVENT_NAME + ' · GALAKSI BLASTER', W / 2, 50);
+  ctx.fillStyle = '#b9a6ff'; ctx.font = `34px ${FONT}`; ctx.fillText(EVENT_NAME + L(' · GALAKSI BLASTER', ' · GALAXY BLASTER'), W / 2, 50);
   if (state === 'playing') {
     ctx.font = `40px ${FONT}`; ctx.fillStyle = '#9fd8ff';
-    ctx.fillText('SKOR', W / 2, 115); ctx.fillText('WAKTU', 210, 115); ctx.fillText('NYAWA', W - 210, 115);
+    ctx.fillText(L('SKOR', 'SCORE'), W / 2, 115); ctx.fillText(L('WAKTU', 'TIME'), 210, 115); ctx.fillText(L('NYAWA', 'LIVES'), W - 210, 115);
     ctx.fillStyle = '#fff'; ctx.font = `bold 140px ${FONT}`; ctx.fillText(score, W / 2, 230);
     ctx.fillStyle = remain <= 10 ? '#ff5577' : '#7dffa0'; ctx.font = `bold 100px ${FONT}`; ctx.fillText(remain, 210, 230);
     ctx.font = `84px ${FONT}`; ctx.fillStyle = '#ff4466';
     ctx.fillText('♥'.repeat(lives) + '♡'.repeat(LIVES - lives), W - 210, 230);
     const m = mult();
     ctx.font = `bold 64px ${FONT}`; ctx.fillStyle = m > 1 ? ['#fff', '#fff', '#7dffa0', '#ffcc33', '#ff66ff'][m] : 'rgba(255,255,255,.35)';
-    ctx.fillText(m > 1 ? `COMBO x${m}` : 'tembak beruntun = combo', W / 2, 360);
+    ctx.fillText(m > 1 ? `COMBO x${m}` : L('tembak beruntun = combo', 'chain hits = combo'), W / 2, 360);
     ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(140, 430, W - 280, 24);
     ctx.fillStyle = remain <= 10 ? '#ff5577' : '#a066ff'; ctx.fillRect(140, 430, (W - 280) * remain / DURATION, 24);
   } else {
     ctx.fillStyle = '#fff'; ctx.font = `bold 96px ${FONT}`;
-    ctx.fillText(state === 'over' ? 'SKOR: ' + score : 'GALAKSI BLASTER', W / 2, 140);
+    ctx.fillText(state === 'over' ? L('SKOR: ', 'SCORE: ') + score : L('GALAKSI BLASTER', 'GALAXY BLASTER'), W / 2, 140);
     ctx.font = `40px ${FONT}`;
     if (state === 'over') {
       ctx.fillStyle = newRecord ? '#ffcc33' : '#9fd8ff';
       const acc = shots ? Math.round(hits / shots * 100) : 0;
-      ctx.fillText((newRecord ? '★ REKOR BARU! ★   ' : 'Rekor: ' + best + '   ') + `Musuh: ${kills}   Akurasi: ${acc}%`, W / 2, 225);
-    } else { ctx.fillStyle = '#9fd8ff'; ctx.fillText('Rekor hari ini: ' + best, W / 2, 225); }
+      ctx.fillText((newRecord ? L('★ REKOR BARU! ★   ', '★ NEW RECORD! ★   ') : L('Rekor: ', 'Best: ') + best + '   ') + L(`Musuh: ${kills}   Akurasi: ${acc}%`, `Enemies: ${kills}   Accuracy: ${acc}%`), W / 2, 225);
+    } else { ctx.fillStyle = '#9fd8ff'; ctx.fillText(L('Rekor hari ini: ', 'Today\'s best: ') + best, W / 2, 225); }
     ctx.font = `32px ${FONT}`;
     ctx.fillStyle = '#ff66dd'; ctx.fillText('Drone 10', W * .14, 295);
-    ctx.fillStyle = '#66ff77'; ctx.fillText('Pesawat cepat 20', W * .38, 295);
-    ctx.fillStyle = '#ffaa44'; ctx.fillText('Raksasa (3x) 40', W * .63, 295);
+    ctx.fillStyle = '#66ff77'; ctx.fillText(L('Pesawat cepat 20', 'Fast ship 20'), W * .38, 295);
+    ctx.fillStyle = '#ffaa44'; ctx.fillText(L('Raksasa (3x) 40', 'Giant (3x) 40'), W * .63, 295);
     ctx.fillStyle = '#ffcc33'; ctx.fillText('UFO 75', W * .86, 295);
     ctx.fillStyle = '#fff'; ctx.font = `36px ${FONT}`;
-    ctx.fillText('Tembak: tarik TRIGGER  /  cubit (pinch) jari', W / 2, 350);
-    ctx.fillText('Jangan biarkan musuh menabrakmu!', W / 2, 398);
+    ctx.fillText(L('Tembak: tarik TRIGGER  /  cubit (pinch) jari', 'Shoot: pull the TRIGGER  /  pinch your fingers'), W / 2, 350);
+    ctx.fillText(L('Jangan biarkan musuh menabrakmu!', 'Don\'t let enemies crash into you!'), W / 2, 398);
     ctx.fillStyle = '#7dffa0'; ctx.font = `bold 40px ${FONT}`;
-    ctx.fillText(canStart ? 'Tembak target hijau untuk ' + (state === 'over' ? 'main lagi' : 'mulai') : '...', W / 2, 455);
+    ctx.fillText(canStart ? L('Tembak target hijau untuk ', 'Shoot the green target to ') + (state === 'over' ? L('main lagi', 'play again') : L('mulai', 'start')) : '...', W / 2, 455);
   }
   board.tex.needsUpdate = true;
 }

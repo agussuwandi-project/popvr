@@ -7,6 +7,9 @@
 <meta name="description" content="Invasi Portal: portal alien terbuka di ruangan nyatamu (Mixed Reality).">
 <meta name="theme-color" content="#05060f">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="title-en" content="Portal Invasion">
+<meta name="description-en" content="Portal Invasion: close alien portals in your real room with Mixed Reality.">
+<script src="i18n.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="tema.css">
@@ -23,17 +26,17 @@
 <div class="xr-aura" aria-hidden="true"><i></i><i></i><i></i></div>
 <header class="xr-top">
   <div class="xr-left"><a class="xr-back" href="./">← Menu</a>
-    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span>Invasi Portal</span></div></div></div>
-  <div class="xr-pill" id="xrStatus">Memeriksa perangkat…</div>
+    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span data-en="Portal Invasion">Invasi Portal</span></div></div></div>
+  <div class="xr-pill" id="xrStatus" data-en="Checking device…" data-en-if="Memeriksa perangkat…">Memeriksa perangkat…</div>
 </header>
 <div id="ov">
-  <div class="xr-head"><div class="xr-icon">🛸</div><div><div class="tags"><span class="tag hot">Baru · Mixed Reality</span><span class="tag">Gelombang kejut</span><span class="tag">Boss</span></div><h1>Invasi Portal</h1></div></div>
-  <p>Portal alien terbuka di ruangan nyatamu. Tembak musuh, tutup portalnya, dan kalahkan kapal induk di detik terakhir. Lihat sekeliling, karena mereka bisa datang dari belakang!</p>
+  <div class="xr-head"><div class="xr-icon">🛸</div><div><div class="tags"><span class="tag hot" data-en="New · Mixed Reality">Baru · Mixed Reality</span><span class="tag" data-en="Shockwave">Gelombang kejut</span><span class="tag">Boss</span></div><h1 data-en="Portal Invasion">Invasi Portal</h1></div></div>
+  <p data-en="Alien portals open in your real room. Shoot the enemies, close the portals, and defeat the mothership in the final seconds. Look around, they can come from behind!">Portal alien terbuka di ruangan nyatamu. Tembak musuh, tutup portalnya, dan kalahkan kapal induk di detik terakhir. Lihat sekeliling, karena mereka bisa datang dari belakang!</p>
   <div class="btns">
-    <button class="btn primary" id="btnAR" disabled>Mulai Mixed Reality <span class="arw">→</span></button>
-    <button class="btn" id="btnVR" disabled>Mulai VR</button>
+    <button class="btn primary" id="btnAR" disabled data-en="Start Mixed Reality <span class=&quot;arw&quot;>→</span>">Mulai Mixed Reality <span class="arw">→</span></button>
+    <button class="btn" id="btnVR" disabled data-en="Start VR">Mulai VR</button>
   </div>
-  <div id="msg">Memeriksa perangkat…</div>
+  <div id="msg" data-en="Checking device…" data-en-if="Memeriksa perangkat…">Memeriksa perangkat…</div>
 </div>
 <script type="module">
 import * as THREE from 'three';
@@ -115,7 +118,7 @@ startHit.userData.kind = 'start'; startT.add(startHit);
 const startLabel = makePanel(1.0, 0.17, 768, 128); startLabel.mesh.position.y = 0.42; startT.add(startLabel.mesh);
 { const { ctx, c } = startLabel; glass(ctx, c.width, c.height, 'rgba(255,120,220,.8)');
   ctx.fillStyle = '#fff'; ctx.font = `700 54px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('TEMBAK UNTUK MULAI', c.width / 2, c.height / 2 + 3); startLabel.tex.needsUpdate = true; }
+  ctx.fillText(L('TEMBAK UNTUK MULAI', 'SHOOT TO START'), c.width / 2, c.height / 2 + 3); startLabel.tex.needsUpdate = true; }
 
 
 // ---------- Tombol KELUAR (tembak untuk keluar dari VR/MR) ----------
@@ -128,7 +131,7 @@ exitHit.userData.isExit = true; exitHit.userData.kind = 'exit'; exitT.add(exitHi
 const exitLabel = makePanel(0.42, 0.1, 384, 96); exitLabel.mesh.position.y = 0.26; exitT.add(exitLabel.mesh);
 { const { ctx, c } = exitLabel; glass(ctx, c.width, c.height, 'rgba(255,90,120,.9)', 26);
   ctx.fillStyle = '#fff'; ctx.font = `700 44px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('KELUAR', c.width / 2, c.height / 2 + 3); exitLabel.tex.needsUpdate = true; }
+  ctx.fillText(L('KELUAR', 'EXIT'), c.width / 2, c.height / 2 + 3); exitLabel.tex.needsUpdate = true; }
 function exitXR() { try { renderer.xr.getSession()?.end(); } catch (e) {} }
 
 // ---------- Suara ----------
@@ -276,7 +279,7 @@ function spawnPortal() {
 function closePortal(p, byShot) {
   if (!portals.includes(p)) return;
   remShoot(p.userData.hb); portals.splice(portals.indexOf(p), 1); p.userData.closing = 0; closing.push(p);
-  if (byShot) { const pts = 100 * mult(); score += pts; explode(p.position, 0xff7ae0, 50, .06, 4); popup(p.position.clone().add(new THREE.Vector3(0, .5, 0)), 'PORTAL DITUTUP +' + pts, '#ff9be8', .9); sfx.portalClose(); }
+  if (byShot) { const pts = 100 * mult(); score += pts; explode(p.position, 0xff7ae0, 50, .06, 4); popup(p.position.clone().add(new THREE.Vector3(0, .5, 0)), L('PORTAL DITUTUP +', 'PORTAL CLOSED +') + pts, '#ff9be8', .9); sfx.portalClose(); }
 }
 const closing = [];
 function spawnOrb() {
@@ -293,7 +296,7 @@ function shockwave(pos) {
   hurtT = .35; flashCol = 0xfff2a0; hurtSphere.material.color.setHex(flashCol); sfx.shock();
   let n = 0; for (const e of [...enemies]) { killEnemy(e, true); n++; }
   for (const p of [...projs]) { removeProj(p); explode(p.position, 0xff4444, 8); }
-  popup(pos.clone().add(new THREE.Vector3(0, .4, 0)), n ? `GELOMBANG KEJUT x${n}!` : 'GELOMBANG KEJUT!', '#ffe27a', 1.0);
+  popup(pos.clone().add(new THREE.Vector3(0, .4, 0)), n ? L(`GELOMBANG KEJUT x${n}!`, `SHOCKWAVE x${n}!`) : L('GELOMBANG KEJUT!', 'SHOCKWAVE!'), '#ffe27a', 1.0);
 }
 function spawnBoss() {
   boss = new THREE.Group(); boss.position.set(head.x, 2.6, head.z - 4.2);
@@ -311,7 +314,7 @@ function spawnBoss() {
   const hb = new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 8), new THREE.MeshBasicMaterial({ visible: false })); hb.scale.y = .45; boss.add(hb);
   boss.userData = { hp: 25, max: 25, t: 0, hull, core, bar, hb, fireT: 2, flash: 0, base: boss.position.clone() };
   addShoot(hb, 'boss', boss); scene.add(boss); sfx.boss(); lastKey = '';
-  popup(new THREE.Vector3(head.x, 2.0, head.z - 2.5), 'KAPAL INDUK DATANG!', '#ff5577', 1.4);
+  popup(new THREE.Vector3(head.x, 2.0, head.z - 2.5), L('KAPAL INDUK DATANG!', 'MOTHERSHIP INCOMING!'), '#ff5577', 1.4);
 }
 function fireProj(from) {
   const m = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 10), new THREE.MeshBasicMaterial({ color: 0xff3344 }));
@@ -334,33 +337,33 @@ function drawBoard() {
   const { ctx, c } = board, W = c.width, H = c.height; ctx.clearRect(0, 0, W, H);
   glass(ctx, W, H, 'rgba(255,120,220,.85)');
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#ffb3ec'; ctx.font = `600 32px ${FONT}`; ctx.fillText(EVENT_NAME + '  ·  INVASI PORTAL', W / 2, 52);
+  ctx.fillStyle = '#ffb3ec'; ctx.font = `600 32px ${FONT}`; ctx.fillText(EVENT_NAME + L('  ·  INVASI PORTAL', '  ·  PORTAL INVASION'), W / 2, 52);
   if (state === 'playing') {
     ctx.font = `600 36px ${FONT}`; ctx.fillStyle = '#c9cfe6';
-    ctx.fillText('WAKTU', 210, 120); ctx.fillText('SKOR', W / 2, 120); ctx.fillText('NYAWA', W - 210, 120);
+    ctx.fillText(L('WAKTU', 'TIME'), 210, 120); ctx.fillText(L('SKOR', 'SCORE'), W / 2, 120); ctx.fillText(L('NYAWA', 'LIVES'), W - 210, 120);
     ctx.fillStyle = remain <= 10 ? '#ff5577' : '#7dffc0'; ctx.font = `700 100px ${FONT}`; ctx.fillText(remain, 210, 225);
     ctx.fillStyle = '#fff'; ctx.font = `700 130px ${FONT}`; ctx.fillText(score, W / 2, 230);
     ctx.fillStyle = '#ff4d8d'; ctx.font = `64px ${FONT}`; ctx.fillText('♥'.repeat(lives) + '♡'.repeat(Math.max(0, LIVES - lives)), W - 210, 225);
     const m = mult();
     if (boss) { ctx.fillStyle = '#ff5577'; ctx.font = `700 56px ${FONT}`; ctx.fillText(`BOSS  ${boss.userData.hp}/${boss.userData.max}`, W / 2, 350); }
-    else { ctx.fillStyle = m > 1 ? '#ffe27a' : 'rgba(255,255,255,.4)'; ctx.font = `700 52px ${FONT}`; ctx.fillText(m > 1 ? `COMBO x${m}` : 'Tutup portal = +100', W / 2, 350); }
+    else { ctx.fillStyle = m > 1 ? '#ffe27a' : 'rgba(255,255,255,.4)'; ctx.font = `700 52px ${FONT}`; ctx.fillText(m > 1 ? `COMBO x${m}` : L('Tutup portal = +100', 'Close a portal = +100'), W / 2, 350); }
     ctx.fillStyle = 'rgba(255,255,255,.12)'; rr(ctx, 140, 420, W - 280, 22, 11); ctx.fill();
     const gr = ctx.createLinearGradient(140, 0, W - 140, 0); gr.addColorStop(0, '#ff3fa4'); gr.addColorStop(1, '#7b5cff');
     ctx.fillStyle = gr; rr(ctx, 140, 420, Math.max(22, (W - 280) * remain / DURATION), 22, 11); ctx.fill();
   } else {
     ctx.fillStyle = '#fff'; ctx.font = `700 92px ${FONT}`;
-    ctx.fillText(state === 'over' ? (victory ? 'MENANG!  ' + score : 'SKOR  ' + score) : 'INVASI PORTAL', W / 2, 140);
+    ctx.fillText(state === 'over' ? (victory ? L('MENANG!  ', 'VICTORY!  ') + score : L('SKOR  ', 'SCORE  ') + score) : L('INVASI PORTAL', 'PORTAL INVASION'), W / 2, 140);
     ctx.font = `600 36px ${FONT}`;
     if (state === 'over') {
       const acc = shots ? Math.round(hits / shots * 100) : 0;
       ctx.fillStyle = newRecord ? '#ffe27a' : '#c9cfe6';
-      ctx.fillText((newRecord ? '★ REKOR BARU ★   ' : `Rekor ${best}   `) + `Musuh ${kills} · Portal ${portalsClosed} · Akurasi ${acc}%`, W / 2, 222);
-    } else { ctx.fillStyle = '#c9cfe6'; ctx.fillText('Rekor hari ini: ' + best, W / 2, 222); }
+      ctx.fillText((newRecord ? L('★ REKOR BARU ★   ', '★ NEW RECORD ★   ') : L(`Rekor ${best}   `, `Best ${best}   `)) + L(`Musuh ${kills} · Portal ${portalsClosed} · Akurasi ${acc}%`, `Enemies ${kills} · Portals ${portalsClosed} · Accuracy ${acc}%`), W / 2, 222);
+    } else { ctx.fillStyle = '#c9cfe6'; ctx.fillText(L('Rekor hari ini: ', 'Today\'s best: ') + best, W / 2, 222); }
     ctx.fillStyle = '#fff'; ctx.font = `34px ${FONT}`;
-    ctx.fillText('Tembak: TRIGGER / pinch  ·  Tembak portal 5x untuk menutupnya', W / 2, 300);
-    ctx.fillText('Bola emas = gelombang kejut  ·  Lihat radar di sekitar badanmu', W / 2, 348);
+    ctx.fillText(L('Tembak: TRIGGER / pinch  ·  Tembak portal 5x untuk menutupnya', 'Shoot: TRIGGER / pinch  ·  Hit a portal 5x to close it'), W / 2, 300);
+    ctx.fillText(L('Bola emas = gelombang kejut  ·  Lihat radar di sekitar badanmu', 'Gold orb = shockwave  ·  Check the radar around your body'), W / 2, 348);
     ctx.fillStyle = '#ff9be8'; ctx.font = `700 40px ${FONT}`;
-    ctx.fillText(canStart ? 'Tembak target untuk ' + (state === 'over' ? 'main lagi' : 'mulai') : '…', W / 2, 425);
+    ctx.fillText(canStart ? L('Tembak target untuk ', 'Shoot the target to ') + (state === 'over' ? L('main lagi', 'play again') : L('mulai', 'start')) : '…', W / 2, 425);
   }
   board.tex.needsUpdate = true;
 }
@@ -444,7 +447,7 @@ function fire(origin, dir, color, g) {
     b.bar.scale.x = Math.max(0.001, b.hp / b.max); b.bar.position.x = -0.8 * (1 - b.bar.scale.x);
     if (b.hp <= 0) {
       remShoot(b.hb); b.dying = true; const dead = boss, pos = boss.position.clone();
-      const pts = 500 * mult(); score += pts; popup(pos.clone().add(new THREE.Vector3(0, .8, 0)), 'KAPAL INDUK HANCUR! +' + pts, '#ffe27a', 1.6);
+      const pts = 500 * mult(); score += pts; popup(pos.clone().add(new THREE.Vector3(0, .8, 0)), L('KAPAL INDUK HANCUR! +', 'MOTHERSHIP DESTROYED! +') + pts, '#ffe27a', 1.6);
       endGame(true);
       for (let i = 0; i < 6; i++) setTimeout(() => { explode(pos.clone().add(new THREE.Vector3().randomDirection().multiplyScalar(.7)), [0xff3fa4, 0xffe066, 0x7b5cff][i % 3], 40, .07, 5); boom(.6, .8, 1800); }, i * 140);
       setTimeout(() => { scene.remove(dead); if (boss === dead) boss = null; }, 750);
@@ -473,10 +476,10 @@ for (let i = 0; i < 16; i++) {
 const ov = document.getElementById('ov'), msg = document.getElementById('msg');
 const btnAR = document.getElementById('btnAR'), btnVR = document.getElementById('btnVR');
 async function checkSupport() {
-  if (!navigator.xr) { msg.textContent = 'WebXR tidak tersedia di browser ini. Mode tes laptop: klik target di layar.'; return; }
+  if (!navigator.xr) { msg.textContent = L('WebXR tidak tersedia di browser ini. Mode tes laptop: klik target di layar.', 'WebXR is not available in this browser. Laptop test mode: click the target on screen.'); return; }
   const [ar, vr] = await Promise.all([navigator.xr.isSessionSupported('immersive-ar').catch(() => false), navigator.xr.isSessionSupported('immersive-vr').catch(() => false)]);
   btnAR.disabled = !ar; btnVR.disabled = !vr;
-  msg.textContent = ar ? 'Siap! Mixed Reality memakai kamera passthrough Quest.' : vr ? 'Mixed Reality tidak tersedia, gunakan mode VR.' : 'Perangkat XR tidak terdeteksi. Mode tes laptop: klik target di layar.';
+  msg.textContent = ar ? L('Siap! Mixed Reality memakai kamera passthrough Quest.', 'Ready! Mixed Reality uses the Quest passthrough camera.') : vr ? L('Mixed Reality tidak tersedia, gunakan mode VR.', 'Mixed Reality not available, use VR mode.') : L('Perangkat XR tidak terdeteksi. Mode tes laptop: klik target di layar.', 'No XR device detected. Laptop test mode: click the target on screen.');
 }
 checkSupport();
 async function startXR(kind) {
@@ -486,7 +489,7 @@ async function startXR(kind) {
     xrKind = kind; applyEnv();
     s.addEventListener('end', () => { xrKind = null; applyEnv(); ov.classList.remove('hide'); if (state === 'playing') endGame(false); });
     await renderer.xr.setSession(s); ov.classList.add('hide');
-  } catch (e) { msg.textContent = 'Gagal memulai: ' + e.message; xrKind = null; applyEnv(); }
+  } catch (e) { msg.textContent = L('Gagal memulai: ', 'Failed to start: ') + e.message; xrKind = null; applyEnv(); }
 }
 btnAR.onclick = () => startXR('ar'); btnVR.onclick = () => startXR('vr');
 

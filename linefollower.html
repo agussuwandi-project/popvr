@@ -7,6 +7,9 @@
 <meta name="description" content="Line Follower PID: atur Kp, Ki, Kd dan lihat robot pengikut garis bereaksi langsung di VR.">
 <meta name="theme-color" content="#05060f">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="title-en" content="Line Follower PID VR">
+<meta name="description-en" content="Line Follower PID: tune Kp, Ki, Kd and watch a line-following robot react live in VR.">
+<script src="i18n.js"></script>
 <link rel="stylesheet" href="tema.css">
 <style>
   :root{--accent:#3ee6c4;--a1:#3ee6c4;--a2:#2a8cf4}
@@ -24,13 +27,13 @@
 <header class="xr-top">
   <div class="xr-left"><a class="xr-back" href="./">← Menu</a>
     <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span>Line Follower PID</span></div></div></div>
-  <div class="xr-pill" id="xrStatus">Memeriksa perangkat…</div>
+  <div class="xr-pill" id="xrStatus" data-en="Checking device…" data-en-if="Memeriksa perangkat…">Memeriksa perangkat…</div>
 </header>
 <div id="ov">
-  <div class="xr-head"><div class="xr-icon">🛤️</div><div><div class="tags"><span class="tag hot">Simulasi</span><span class="tag">Robotika</span><span class="tag">Kontrol PID</span></div><h1>Line Follower PID</h1></div></div>
-  <p>Robot pengikut garis dengan 5 sensor. Atur Kp, Ki, Kd dan kecepatan, lalu lihat langsung bedanya: keluar di tikungan, zig-zag, atau mulus.</p>
-  <div class="btns"><button class="btn primary" id="btnVR" disabled>Masuk VR <span class="arw">→</span></button></div>
-  <div id="msg">Memeriksa perangkat…</div>
+  <div class="xr-head"><div class="xr-icon">🛤️</div><div><div class="tags"><span class="tag hot" data-en="Simulation">Simulasi</span><span class="tag" data-en="Robotics">Robotika</span><span class="tag" data-en="PID Control">Kontrol PID</span></div><h1>Line Follower PID</h1></div></div>
+  <p data-en="A line-following robot with 5 sensors. Tune Kp, Ki, Kd and speed, then see the difference right away: running off at corners, zig-zagging, or smooth.">Robot pengikut garis dengan 5 sensor. Atur Kp, Ki, Kd dan kecepatan, lalu lihat langsung bedanya: keluar di tikungan, zig-zag, atau mulus.</p>
+  <div class="btns"><button class="btn primary" id="btnVR" disabled data-en="Enter VR <span class=&quot;arw&quot;>→</span>">Masuk VR <span class="arw">→</span></button></div>
+  <div id="msg" data-en="Checking device…" data-en-if="Memeriksa perangkat…">Memeriksa perangkat…</div>
 </div>
 <script type="module">
 import * as THREE from 'three';
@@ -81,19 +84,19 @@ renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 {
   const ov = document.getElementById('ov'), msg = document.getElementById('msg'), btnVR = document.getElementById('btnVR');
-  const laptop = 'Mode tes laptop: klik tombol di panel kiri untuk mengatur PID.';
+  const laptop = L('Mode tes laptop: klik tombol di panel kiri untuk mengatur PID.', 'Laptop test mode: click the buttons on the left panel to tune the PID.');
   (async () => {
-    if (!navigator.xr) { msg.textContent = 'WebXR tidak tersedia. ' + laptop; return; }
+    if (!navigator.xr) { msg.textContent = L('WebXR tidak tersedia. ', 'WebXR not available. ') + laptop; return; }
     const ok = await navigator.xr.isSessionSupported('immersive-vr').catch(() => false);
     btnVR.disabled = !ok;
-    msg.textContent = ok ? 'Siap! Tekan Masuk VR, lalu pakai headset.' : 'Headset tidak terdeteksi. ' + laptop;
+    msg.textContent = ok ? L('Siap! Tekan Masuk VR, lalu pakai headset.', 'Ready! Press Enter VR, then put on the headset.') : L('Headset tidak terdeteksi. ', 'No headset detected. ') + laptop;
   })();
   btnVR.onclick = async () => {
     try {
       const s = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] });
       s.addEventListener('end', () => ov.classList.remove('hide'));
       await renderer.xr.setSession(s); ov.classList.add('hide');
-    } catch (e) { msg.textContent = 'Gagal memulai: ' + e.message; }
+    } catch (e) { msg.textContent = L('Gagal memulai: ', 'Failed to start: ') + e.message; }
   };
 }
 
@@ -154,7 +157,7 @@ const BW = 3.9, BD = 2.5; // ukuran spanduk
   for (let k = 0; k < 6; k++) for (let m = 0; m < 2; m++) { x.fillStyle = (k + m) % 2 ? '#111' : '#3ee6c4'; x.fillRect(-0.02 * sc + m * 0.02 * sc, (-0.12 + k * 0.04) * sc, 0.02 * sc, 0.04 * sc); }
   x.fillStyle = '#1a8a75'; x.font = `bold ${0.07 * sc}px ${FONT}`; x.textAlign = 'center'; x.fillText('START', 0, -0.15 * sc); x.restore();
   x.fillStyle = 'rgba(0,0,0,.35)'; x.font = `600 ${0.06 * sc}px ${FONT}`; x.textAlign = 'left';
-  x.fillText('UVERS XR Lab · Lintasan Line Follower', 0.08 * sc, c.height - 0.08 * sc);
+  x.fillText(L('UVERS XR Lab · Lintasan Line Follower', 'UVERS XR Lab · Line Follower Track'), 0.08 * sc, c.height - 0.08 * sc);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
   const mat = new THREE.Mesh(new THREE.PlaneGeometry(BW, BD), new THREE.MeshStandardMaterial({ map: tex, roughness: .9 }));
   mat.rotation.x = -Math.PI / 2; mat.position.copy(AC).setY(0.006); mat.receiveShadow = true; scene.add(mat);
@@ -192,7 +195,7 @@ const header = makePanel(2.6, 0.42, 1300, 210);
 header.mesh.position.set(0, 2.5, -4.4); header.mesh.lookAt(0, 1.6, 0); scene.add(header.mesh);
 { const { ctx, c } = header; glass(ctx, c.width, c.height, 'rgba(62,230,196,.9)', 36);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#fff'; ctx.font = `bold 78px ${FONT}`; ctx.fillText('LINE FOLLOWER · KONTROL PID', c.width / 2, 80);
+  ctx.fillStyle = '#fff'; ctx.font = `bold 78px ${FONT}`; ctx.fillText(L('LINE FOLLOWER · KONTROL PID', 'LINE FOLLOWER · PID CONTROL'), c.width / 2, 80);
   ctx.fillStyle = '#8ff5df'; ctx.font = `42px ${FONT}`; ctx.fillText(HEADER, c.width / 2, 155); header.tex.needsUpdate = true; }
 
 const info = makePanel(1.1, 1.3, 880, 1040);
@@ -248,10 +251,10 @@ function pushTrail(x, z) {
 const P = { Kp: 1.5, Ki: 0, Kd: 0.03, spd: 0.7, mode: 'pid' };   // nilai awal = "PD pas"
 const LIM = { Kp: [0, 4, 0.1], Ki: [0, 3, 0.1], Kd: [0, 0.1, 0.005], spd: [0.3, 1.0, 0.05] };
 const PRESETS = {
-  kecil: { t: 'Kp terlalu kecil', Kp: 0.2, Ki: 0, Kd: 0, spd: 0.7, mode: 'pid' },
-  besar: { t: 'Kp besar tanpa Kd', Kp: 1.5, Ki: 0, Kd: 0, spd: 0.7, mode: 'pid' },
-  pas:   { t: 'PD pas', Kp: 1.5, Ki: 0, Kd: 0.03, spd: 0.7, mode: 'pid' },
-  balap: { t: 'Balap', Kp: 2.5, Ki: 0, Kd: 0.05, spd: 0.9, mode: 'pid' },
+  kecil: { t: L('Kp terlalu kecil', 'Kp too small'), Kp: 0.2, Ki: 0, Kd: 0, spd: 0.7, mode: 'pid' },
+  besar: { t: L('Kp besar tanpa Kd', 'Big Kp, no Kd'), Kp: 1.5, Ki: 0, Kd: 0, spd: 0.7, mode: 'pid' },
+  pas:   { t: L('PD pas', 'PD just right'), Kp: 1.5, Ki: 0, Kd: 0.03, spd: 0.7, mode: 'pid' },
+  balap: { t: L('Balap', 'Race'), Kp: 2.5, Ki: 0, Kd: 0.05, spd: 0.9, mode: 'pid' },
   onoff: { t: 'ON-OFF 2 sensor', Kp: 0, Ki: 0, Kd: 0, spd: 0.7, mode: 'onoff' },
 };
 const S = {}; // keadaan simulasi
@@ -349,7 +352,7 @@ function makeButton(label, x, y, action, color = 0x2f5a5a, w = 0.11, h = 0.1, fs
   base.userData = { action, color, label, set: (l, s2) => { drawFace(ctx, c, l, fs, s2); tex.needsUpdate = true; } };
   panel.add(base); if (action) buttons.push(base); return base;
 }
-const NAMA = { Kp: 'Kp', Ki: 'Ki', Kd: 'Kd', spd: 'Kecepatan' };
+const NAMA = { Kp: 'Kp', Ki: 'Ki', Kd: 'Kd', spd: L('Kecepatan', 'Speed') };
 const fmt = (k, v) => k === 'Kd' ? v.toFixed(3) : k === 'spd' ? Math.round(v * 100) + '%' : v.toFixed(1);
 const disp = {};
 ['Kp', 'Ki', 'Kd', 'spd'].forEach((k, r) => {
@@ -364,12 +367,12 @@ Object.entries(PRESETS).forEach(([id, p], i) => {
   presetBtns[id] = makeButton(p.t, 0.18, 0.2 - i * 0.08, () => pakaiPreset(id), id === 'onoff' ? 0x5a4a2f : 0x2f4a73, .2, .07, 40);
   presetBtns[id].userData.preset = id;
 });
-const runBtn = makeButton('⏸ Jeda', -0.2, -0.225, () => { running = !running; runBtn.userData.set(running ? '⏸ Jeda' : '▶ Jalan'); tone(600, .08); }, 0x2f5a5a, .17, .065, 46);
-makeButton('↺ Ulang', -0.01, -0.225, () => { resetSim(); tone(440, .1); }, 0x6b5a2f, .17, .065, 46);
-makeButton('✕ Keluar', 0.19, -0.225, () => { try { renderer.xr.getSession()?.end(); } catch (e) {} }, 0x8a2433, .17, .065, 46);
+const runBtn = makeButton(L('⏸ Jeda', '⏸ Pause'), -0.2, -0.225, () => { running = !running; runBtn.userData.set(running ? L('⏸ Jeda', '⏸ Pause') : L('▶ Jalan', '▶ Run')); tone(600, .08); }, 0x2f5a5a, .17, .065, 46);
+makeButton(L('↺ Ulang', '↺ Restart'), -0.01, -0.225, () => { resetSim(); tone(440, .1); }, 0x6b5a2f, .17, .065, 46);
+makeButton(L('✕ Keluar', '✕ Exit'), 0.19, -0.225, () => { try { renderer.xr.getSession()?.end(); } catch (e) {} }, 0x8a2433, .17, .065, 46);
 function pakaiPreset(id) {
   const p = PRESETS[id]; Object.assign(P, { Kp: p.Kp, Ki: p.Ki, Kd: p.Kd, spd: p.spd, mode: p.mode }); lastPreset = id;
-  resetSim(); running = true; runBtn.userData.set('⏸ Jeda'); tone(880, .1, 'triangle', .15); refresh();
+  resetSim(); running = true; runBtn.userData.set(L('⏸ Jeda', '⏸ Pause')); tone(880, .1, 'triangle', .15); refresh();
 }
 function refresh() { for (const k in disp) disp[k].userData.set(P.mode === 'onoff' && k !== 'spd' ? '—' : fmt(k, P[k]), NAMA[k]); lastInfo = ''; }
 
@@ -413,16 +416,16 @@ renderer.domElement.addEventListener('pointerdown', ev => {
 
 // ---------- Panel info ----------
 function diagnosa() {
-  if (P.mode === 'onoff') return ['ON-OFF 2 sensor', 'Seperti robot pameran: sensor kiri kena garis → roda kiri berhenti. Aman, tapi lambat dan patah-patah. PID memakai SEBERAPA JAUH robot melenceng, bukan hanya kiri/kanan.', '#ffcf70'];
+  if (P.mode === 'onoff') return ['ON-OFF 2 sensor', L('Seperti robot pameran: sensor kiri kena garis → roda kiri berhenti. Aman, tapi lambat dan patah-patah. PID memakai SEBERAPA JAUH robot melenceng, bukan hanya kiri/kanan.', 'Like the exhibition robot: left sensor on the line → left wheel stops. Safe, but slow and jerky. PID uses HOW FAR the robot drifts, not just left/right.'), '#ffcf70'];
   let cross = 0, sq = 0; const n = 150;
   for (let k = 1; k < n; k++) { const a = hist[(hi - k + HN) % HN], b = hist[(hi - k - 1 + HN) % HN]; if (a * b < 0 && Math.abs(a - b) > 0.15) cross++; sq += a * a; }
   const rms = Math.sqrt(sq / n);
-  if (recentOff > 0) return ['Keluar lintasan!', P.Kp < 0.6 ? 'Kp terlalu kecil: koreksinya lemah, robot tidak sempat berbelok di tikungan. Naikkan Kp.' : 'Terlalu cepat untuk tikungan ini. Turunkan kecepatan, atau naikkan Kp dan Kd bersama.', '#ff6b8a'];
-  if (cross > 9 && P.Kd < 0.015) return ['Zig-zag', 'Kp besar tanpa peredam: robot selalu kelewatan lalu membalik arah. Naikkan Kd — suku D melawan perubahan error yang terlalu cepat.', '#ffcf70'];
-  if (cross > 9) return ['Masih bergoyang', 'Coba naikkan Kd sedikit, atau turunkan Kp.', '#ffcf70'];
-  if (rms > 0.35) return ['Lambat mengoreksi', 'Robot sering jauh dari garis. Naikkan Kp agar koreksinya lebih kuat.', '#ffcf70'];
-  if (P.Ki > 0.05) return ['Mulus', 'Ki menghapus error yang menetap. Di lintasan berliku efeknya kecil — karena itu banyak line follower cukup memakai PD.', '#7dffa0'];
-  return ['Mulus', best && best < TARGET ? 'Tantangan selesai! Coba cari pengaturan yang lebih cepat lagi.' : `Stabil. Tantangan: naikkan kecepatan dan setel ulang PID sampai satu putaran di bawah ${TARGET.toFixed(1)} detik.`, '#7dffa0'];
+  if (recentOff > 0) return [L('Keluar lintasan!', 'Off the track!'), P.Kp < 0.6 ? L('Kp terlalu kecil: koreksinya lemah, robot tidak sempat berbelok di tikungan. Naikkan Kp.', 'Kp too small: the correction is weak, so the robot can\'t turn in time at corners. Raise Kp.') : L('Terlalu cepat untuk tikungan ini. Turunkan kecepatan, atau naikkan Kp dan Kd bersama.', 'Too fast for this corner. Lower the speed, or raise Kp and Kd together.'), '#ff6b8a'];
+  if (cross > 9 && P.Kd < 0.015) return [L('Zig-zag', 'Zig-zag'), L('Kp besar tanpa peredam: robot selalu kelewatan lalu membalik arah. Naikkan Kd — suku D melawan perubahan error yang terlalu cepat.', 'Big Kp with no damping: the robot keeps overshooting and reversing. Raise Kd — the D term fights error that changes too fast.'), '#ffcf70'];
+  if (cross > 9) return [L('Masih bergoyang', 'Still wobbling'), L('Coba naikkan Kd sedikit, atau turunkan Kp.', 'Try raising Kd a little, or lowering Kp.'), '#ffcf70'];
+  if (rms > 0.35) return [L('Lambat mengoreksi', 'Slow to correct'), L('Robot sering jauh dari garis. Naikkan Kp agar koreksinya lebih kuat.', 'The robot often drifts far from the line. Raise Kp for a stronger correction.'), '#ffcf70'];
+  if (P.Ki > 0.05) return [L('Mulus', 'Smooth'), L('Ki menghapus error yang menetap. Di lintasan berliku efeknya kecil — karena itu banyak line follower cukup memakai PD.', 'Ki removes steady error. On a winding track its effect is small — that\'s why many line followers only use PD.'), '#7dffa0'];
+  return [L('Mulus', 'Smooth'), best && best < TARGET ? L('Tantangan selesai! Coba cari pengaturan yang lebih cepat lagi.', 'Challenge complete! Try to find an even faster setting.') : L(`Stabil. Tantangan: naikkan kecepatan dan setel ulang PID sampai satu putaran di bawah ${TARGET.toFixed(1)} detik.`, `Stable. Challenge: raise the speed and retune the PID until one lap takes under ${TARGET.toFixed(1)} seconds.`), '#7dffa0'];
 }
 let lastInfo = '', infoT = 0;
 function drawInfo(force) {
@@ -437,7 +440,7 @@ function drawInfo(force) {
   ctx.fillStyle = '#d8f0ee'; ctx.font = `30px ${FONT}`; let y = wrap(ctx, saran, 44, 178, Wd - 88, 40);
   // sensor
   y = Math.max(y + 56, 330);
-  ctx.fillStyle = '#8ff5df'; ctx.font = `28px ${FONT}`; ctx.fillText('SENSOR', 44, y);
+  ctx.fillStyle = '#8ff5df'; ctx.font = `28px ${FONT}`; ctx.fillText(L('SENSOR', 'SENSORS'), 44, y);
   S.rs.forEach((r, k) => { const cx = 230 + (4 - k) * 70, on = r > .5, dim = P.mode === 'onoff' && k !== 1 && k !== 3;
     ctx.beginPath(); ctx.arc(cx, y - 10, 22, 0, Math.PI * 2); ctx.fillStyle = dim ? 'rgba(255,255,255,.06)' : on ? '#ff3b3b' : 'rgba(255,255,255,.15)'; ctx.fill(); });
   // grafik error
@@ -449,13 +452,13 @@ function drawInfo(force) {
     for (let k = 0; k < HN; k++) { const v = R.clamp(arr[(hi + k) % HN] * sc, -.5, .5), px = gx + k / (HN - 1) * gw, py = gy + gh / 2 - v * gh;
       k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke();
   }
-  ctx.font = `24px ${FONT}`; ctx.fillStyle = '#3ee6c4'; ctx.fillText('error (posisi garis)', gx + 14, gy + gh + 34);
-  ctx.fillStyle = '#ff7cc0'; ctx.fillText('koreksi belok', gx + 300, gy + gh + 34);
-  ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillText('6 detik terakhir', gx + gw - 180, gy + gh + 34);
+  ctx.font = `24px ${FONT}`; ctx.fillStyle = '#3ee6c4'; ctx.fillText(L('error (posisi garis)', 'error (line position)'), gx + 14, gy + gh + 34);
+  ctx.fillStyle = '#ff7cc0'; ctx.fillText(L('koreksi belok', 'steering correction'), gx + 300, gy + gh + 34);
+  ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillText(L('6 detik terakhir', 'last 6 seconds'), gx + gw - 180, gy + gh + 34);
   // suku P I D
   y = gy + gh + 86;
   if (P.mode === 'pid') {
-    ctx.fillStyle = '#8ff5df'; ctx.font = `28px ${FONT}`; ctx.fillText('KOREKSI = P + I + D', 44, y);
+    ctx.fillStyle = '#8ff5df'; ctx.font = `28px ${FONT}`; ctx.fillText(L('KOREKSI = P + I + D', 'CORRECTION = P + I + D'), 44, y);
     [['P', S.pT, '#3ee6c4'], ['I', S.iT, '#ffcf70'], ['D', S.dT, '#a48cff']].forEach(([n, v, col], k) => {
       const yy = y + 18 + k * 46, cx = Wd / 2 + 60, bw = 280, len = Math.min(1, Math.abs(v)) * bw;
       ctx.fillStyle = '#fff'; ctx.font = `bold 30px ${FONT}`; ctx.fillText(n, 60, yy + 30);
@@ -466,13 +469,13 @@ function drawInfo(force) {
     y += 205;
   } else y += 30;
   // waktu putaran
-  ctx.fillStyle = '#8ff5df'; ctx.font = `28px ${FONT}`; ctx.fillText('WAKTU PUTARAN', 44, y);
+  ctx.fillStyle = '#8ff5df'; ctx.font = `28px ${FONT}`; ctx.fillText(L('WAKTU PUTARAN', 'LAP TIME'), 44, y);
   ctx.fillStyle = '#fff'; ctx.font = `bold 52px ${FONT}`; ctx.fillText(S.off ? '—' : S.lapT.toFixed(1) + ' s', 44, y + 60);
   ctx.font = `30px ${FONT}`; ctx.fillStyle = best && best < TARGET ? '#7dffa0' : '#ffd23f';
-  ctx.fillText(`Terbaik: ${best ? best.toFixed(2) + ' s' : '—'}   ·   Target < ${TARGET.toFixed(1)} s`, 300, y + 52);
+  ctx.fillText(L(`Terbaik: ${best ? best.toFixed(2) + ' s' : '—'}   ·   Target < ${TARGET.toFixed(1)} s`, `Best: ${best ? best.toFixed(2) + ' s' : '—'}   ·   Target < ${TARGET.toFixed(1)} s`), 300, y + 52);
   ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = `25px ${FONT}`;
   laps.slice(-3).reverse().forEach((l, k) => ctx.fillText(`${l.t.toFixed(2)} s  ·  ${l.cfg}`, 44, y + 110 + k * 36));
-  ctx.fillStyle = '#ff8aa5'; if (offCount) ctx.fillText(`Keluar lintasan: ${offCount}x`, Wd - 300, c.height - 36);
+  ctx.fillStyle = '#ff8aa5'; if (offCount) ctx.fillText(L(`Keluar lintasan: ${offCount}x`, `Off track: ${offCount}x`), Wd - 300, c.height - 36);
   info.tex.needsUpdate = true;
 }
 const cfgStr = () => P.mode === 'onoff' ? `ON-OFF · ${Math.round(P.spd * 100)}%` : `Kp ${P.Kp.toFixed(1)}  Ki ${P.Ki.toFixed(1)}  Kd ${P.Kd.toFixed(3)}  · ${Math.round(P.spd * 100)}%`;
@@ -491,11 +494,11 @@ renderer.setAnimationLoop(() => {
     physAcc += dt;
     while (physAcc >= DT) { physAcc -= DT;
       const r = langkah();
-      if (r === 'off') { offCount++; recentOff = 3; popup(robot.position.clone().setY(.3), 'Keluar lintasan!', '#ff6b8a', .5); tone(180, .35, 'sawtooth', .15); for (const o of ctrls) haptic(o, .8, 120); }
+      if (r === 'off') { offCount++; recentOff = 3; popup(robot.position.clone().setY(.3), L('Keluar lintasan!', 'Off the track!'), '#ff6b8a', .5); tone(180, .35, 'sawtooth', .15); for (const o of ctrls) haptic(o, .8, 120); }
       else if (typeof r === 'number') {
         laps.push({ t: r, cfg: cfgStr() }); if (laps.length > 20) laps.shift();
         const rekor = !best || r < best; if (rekor) best = r;
-        popup(robot.position.clone().setY(.3), r.toFixed(2) + ' s' + (rekor ? ' · rekor!' : ''), r < TARGET ? '#7dffa0' : '#ffd23f', .5);
+        popup(robot.position.clone().setY(.3), r.toFixed(2) + ' s' + (rekor ? L(' · rekor!', ' · record!') : ''), r < TARGET ? '#7dffa0' : '#ffd23f', .5);
         (r < TARGET ? [660, 880, 1100, 1320] : [880, 1100]).forEach((f, i) => setTimeout(() => tone(f, .16, 'square', .1), i * 110));
       }
     }

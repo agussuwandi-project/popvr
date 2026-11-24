@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Robot SAR FPV</title>
+<meta name="description" content="Robot SAR FPV: kemudikan robot penyelamat dari kameranya, cari korban gempa dengan kamera termal.">
+<meta name="theme-color" content="#05060f">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="title-en" content="SAR Robot FPV">
+<meta name="description-en" content="SAR Robot FPV: drive a rescue robot through its camera and find earthquake victims with a thermal camera.">
+<script src="i18n.js"></script>
+<link rel="stylesheet" href="tema.css">
+<style>
+  :root{--accent:#ff7a2a;--a1:#ff8a3d;--a2:#ff3f5e}
+</style>
+<script type="importmap">
+{ "imports": { "three": "./three.module.min.js" } }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<script src="loader.js"></script>
+<script src="tema.js" defer></script>
+<div class="xr-aura" aria-hidden="true"><i></i><i></i><i></i></div>
+<header class="xr-top">
+  <div class="xr-left"><a class="xr-back" href="./">← Menu</a>
+    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span data-en="SAR Robot (FPV)">Robot SAR (FPV)</span></div></div></div>
+  <div class="xr-pill" id="xrStatus" data-en="Checking device…" data-en-if="Memeriksa perangkat…">Memeriksa perangkat…</div>
+</header>
+<div id="ov">
+  <div class="xr-head"><div class="xr-icon">🚨</div><div><div class="tags"><span class="tag hot" data-en="Simulation">Simulasi</span><span class="tag">FPV</span><span class="tag">SAR</span></div><h1 data-en="SAR Robot">Robot SAR</h1></div></div>
+  <p data-en="You see through the camera of a rescue robot in post-earthquake rubble. Drive the robot, use the thermal camera, and mark 5 victims. Careful: not everything hot is a victim.">Kamu melihat dari kamera robot penyelamat di reruntuhan pascagempa. Kemudikan robot, pakai kamera termal, dan tandai 5 korban. Hati-hati: tidak semua yang panas adalah korban.</p>
+  <div class="btns"><button class="btn primary" id="btnVR" disabled data-en="Enter VR <span class=&quot;arw&quot;>→</span>">Masuk VR <span class="arw">→</span></button></div>
+  <div id="msg" data-en="Checking device…" data-en-if="Memeriksa perangkat…">Memeriksa perangkat…</div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+
+// ====== PENGATURAN (silakan ubah) ======
+const HEADER = 'UVERS · Prodi TIF · ME · IE';
+const DURASI = 180;        // waktu misi (detik)
+const VMAX = 1.1;          // kecepatan maju maksimum (m/s)
+const WMAX = 0.8;          // kecepatan belok maksimum (rad/s) — sengaja pelan agar tidak pusing
+const N_KORBAN = 5, SEED = 7;
+const JARAK_TANDA = 3.2;   // jarak maksimum menandai (m)
+// =======================================
+
+// ---------- Gaya visual bersama (font, panel kaca, angka melayang) ----------
+await Promise.race([document.fonts.load("700 40px 'Space Grotesk'"), new Promise(r => setTimeout(r, 1500))]).catch(() => {});
+const FONT = "'Space Grotesk', system-ui, sans-serif";
+function glass(ctx, W, H, accent, rad = 40) {
+  const g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, 'rgba(38,34,78,.82)'); g.addColorStop(1, 'rgba(8,12,30,.82)');
+  ctx.fillStyle = g; rr(ctx, 6, 6, W - 12, H - 12, rad); ctx.fill();
+  ctx.save(); ctx.shadowColor = accent; ctx.shadowBlur = 24; ctx.strokeStyle = accent; ctx.lineWidth = 5; rr(ctx, 6, 6, W - 12, H - 12, rad); ctx.stroke(); ctx.restore();
+  const hl = ctx.createLinearGradient(0, 0, 0, H * .45); hl.addColorStop(0, 'rgba(255,255,255,.14)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = hl; rr(ctx, 14, 14, W - 28, H * .42, Math.max(8, rad - 8)); ctx.fill();
+}
+const __pops = [];
+function popup(pos, text, color = '#ffffff', size = .3) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128; const x = c.getContext('2d');
+  x.font = `700 84px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.lineWidth = 10; x.strokeStyle = 'rgba(0,0,0,.55)'; x.strokeText(text, 256, 64); x.fillStyle = color; x.fillText(text, 256, 64);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  s.position.copy(pos); s.scale.set(size, size / 4, 1); s.renderOrder = 998; scene.add(s); __pops.push({ s, tex, t0: performance.now() });
+}
+function updatePopups() {
+  const now = performance.now();
+  for (let i = __pops.length - 1; i >= 0; i--) { const p = __pops[i], k = (now - p.t0) / 900;
+    p.s.position.y += 0.004; p.s.material.opacity = Math.max(0, 1 - k * k);
+    if (k >= 1) { scene.remove(p.s); p.tex.dispose(); p.s.material.dispose(); __pops.splice(i, 1); } }
+}
+
+
+
+const R = THREE.MathUtils;
+let seed = SEED; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.xr.enabled = true;
+renderer.xr.setReferenceSpaceType('local'); // pusat = posisi kepala saat mulai, jadi enak dimainkan sambil duduk maupun berdiri
+document.body.appendChild(renderer.domElement);
+{
+  const ov = document.getElementById('ov'), msg = document.getElementById('msg'), btnVR = document.getElementById('btnVR');
+  const laptop = L('Mode tes laptop: W/S maju-mundur, A/D belok, Spasi tandai korban, seret mouse untuk melihat sekeliling.', 'Laptop test mode: W/S forward-back, A/D turn, Space marks a victim, drag the mouse to look around.');
+  (async () => {
+    if (!navigator.xr) { msg.textContent = L('WebXR tidak tersedia. ', 'WebXR not available. ') + laptop; return; }
+    const ok = await navigator.xr.isSessionSupported('immersive-vr').catch(() => false);
+    btnVR.disabled = !ok;
+    msg.textContent = ok ? L('Siap! Disarankan sambil DUDUK. Tekan Masuk VR.', 'Ready! Best played SEATED. Press Enter VR.') : L('Headset tidak terdeteksi. ', 'No headset detected. ') + laptop;
+  })();
+  btnVR.onclick = async () => {
+    try {
+      const s = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'hand-tracking', 'layers'] });
+      s.addEventListener('end', () => ov.classList.remove('hide'));
+      await renderer.xr.setSession(s); ov.classList.add('hide'); mulai();
+    } catch (e) { msg.textContent = L('Gagal memulai: ', 'Failed to start: ') + e.message; }
+  };
+}
+
+const scene = new THREE.Scene();
+const FOGC = 0x8a7a68;
+scene.background = new THREE.Color(FOGC);
+scene.fog = new THREE.Fog(FOGC, 6, 30);
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.03, 120);
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+// ---------- Robot & kokpit (rig) ----------
+const robot = new THREE.Group(); scene.add(robot);         // badan robot di lantai
+const CAM_H = 1.05;                                        // tinggi kamera robot dari lantai
+const rig = new THREE.Group(); rig.position.y = CAM_H; robot.add(rig); rig.add(camera);
+import('./logo3d.js').then(m => m.pasangLogo3D(renderer, scene)).catch(e => console.warn('logo3d', e));
+
+// ---------- Dunia reruntuhan ----------
+const ARENA = 34;
+const solids = [];   // rintangan 2D: {x,z,hx,hz,a} (kotak berputar)
+const losMeshes = []; // untuk cek garis pandang
+const heatObjs = [];  // {mesh, heat}
+const allMeshes = []; // untuk tampilan termal
+function reg(mesh, heat = 0.12, solid = true, los = true) {
+  mesh.userData.heat = heat; allMeshes.push(mesh); if (los) losMeshes.push(mesh); scene.add(mesh); return mesh;
+}
+function solidBox(x, z, w, d, a = 0) { solids.push({ x, z, hx: w / 2, hz: d / 2, a }); }
+const M = {
+  beton: new THREE.MeshStandardMaterial({ color: 0x9a9184, roughness: .95 }),
+  beton2: new THREE.MeshStandardMaterial({ color: 0x7d746a, roughness: .95 }),
+  bata: new THREE.MeshStandardMaterial({ color: 0x9c5a44, roughness: .9 }),
+  besi: new THREE.MeshStandardMaterial({ color: 0x4a3a30, metalness: .6, roughness: .6 }),
+  tanah: new THREE.MeshStandardMaterial({ color: 0x6e6052, roughness: 1 }),
+};
+scene.add(new THREE.HemisphereLight(0xfff0dd, 0x3a3028, 1.5));
+const sun = new THREE.DirectionalLight(0xffe2b8, 1.6); sun.position.set(8, 14, 5); scene.add(sun);
+{
+  const g = new THREE.Mesh(new THREE.PlaneGeometry(ARENA + 20, ARENA + 20), M.tanah); g.rotation.x = -Math.PI / 2; reg(g, 0.1, false, false);
+  // pagar batas
+  const tapeM = new THREE.MeshBasicMaterial({ color: 0xffd23f });
+  for (const [x, z, w, d] of [[0, -ARENA / 2, ARENA, .3], [0, ARENA / 2, ARENA, .3], [-ARENA / 2, 0, .3, ARENA], [ARENA / 2, 0, .3, ARENA]]) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1.2, d), M.beton2); m.position.set(x, .6, z); reg(m); solidBox(x, z, w, d);
+    const t = new THREE.Mesh(new THREE.BoxGeometry(w + .02, .08, d + .02), tapeM); t.position.set(x, 1.0, z); reg(t, .1, false, false);
+  }
+}
+// bangunan runtuh: dinding patah, pelat miring, kolom, tumpukan puing
+const area = []; // area terpakai
+const bebas = (x, z, r) => Math.hypot(x, z) > 3.2 && area.every(a => Math.hypot(a[0] - x, a[1] - z) > a[2] + r);
+function cariTempat(r, tries = 400) { for (let i = 0; i < tries; i++) { const x = (rnd() - .5) * (ARENA - 4), z = (rnd() - .5) * (ARENA - 4); if (bebas(x, z, r)) return [x, z]; } return null; }
+function dinding(x, z, w, a) {
+  const h = 1.4 + rnd() * 1.8, g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = a;
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, .25), rnd() < .5 ? M.bata : M.beton); m.position.y = h / 2; m.rotation.z = (rnd() - .5) * .12; g.add(m);
+  // tepi patah
+  for (let i = 0; i < 4; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(.3 + rnd() * .5, .3 + rnd() * .5, .26), m.material); c.position.set((rnd() - .5) * w, h + rnd() * .2 - .1, 0); c.rotation.z = rnd() * 1.5; g.add(c); }
+  scene.add(g); g.traverse(o => { if (o.isMesh) { o.userData.heat = 0.12; allMeshes.push(o); losMeshes.push(o); } });
+  solidBox(x, z, w, .45, a); area.push([x, z, w / 2 + .3]);
+}
+function pelat(x, z) {
+  const w = 2.5 + rnd() * 2, d = 1.8 + rnd() * 1.5, a = rnd() * Math.PI, tilt = .25 + rnd() * .35;
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, .22, d), M.beton); m.position.set(x, Math.sin(tilt) * d / 2 + .05, z); m.rotation.set(tilt, a, 0, 'YXZ'); reg(m);
+  for (let i = 0; i < 5; i++) { // besi beton mencuat
+    const r = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, .5 + rnd() * .6, 5), M.besi);
+    r.position.set(x + (rnd() - .5) * w * .8, .3 + rnd() * .6, z + (rnd() - .5) * d * .5); r.rotation.set(rnd() - .5, 0, rnd() - .5); reg(r, .1, false, false);
+  }
+  solidBox(x, z, w, d * Math.cos(tilt), a); area.push([x, z, Math.max(w, d) / 2 + .3]);
+}
+function kolom(x, z) {
+  const h = 2 + rnd() * 2.5, m = new THREE.Mesh(new THREE.BoxGeometry(.45, h, .45), M.beton2); m.position.set(x, h / 2, z); m.rotation.set((rnd() - .5) * .2, rnd(), (rnd() - .5) * .2); reg(m);
+  solidBox(x, z, .55, .55, m.rotation.y); area.push([x, z, .6]);
+}
+function puing(x, z) {
+  const r = .8 + rnd() * .8, n = 8 + Math.floor(rnd() * 8);
+  for (let i = 0; i < n; i++) {
+    const s = .2 + rnd() * .5, m = new THREE.Mesh(new THREE.BoxGeometry(s, s * .6, s * (.6 + rnd())), rnd() < .4 ? M.bata : M.beton2);
+    const aa = rnd() * 6.28, rr = rnd() * r; m.position.set(x + Math.cos(aa) * rr, s * .3 + (1 - rr / r) * .35, z + Math.sin(aa) * rr); m.rotation.set(rnd(), rnd() * 3, rnd()); reg(m);
+  }
+  solids.push({ x, z, hx: r * .75, hz: r * .75, a: 0, round: true }); area.push([x, z, r + .3]);
+}
+for (let i = 0; i < 16; i++) { const p = cariTempat(2); if (p) dinding(p[0], p[1], 2.5 + rnd() * 3, rnd() * Math.PI); }
+for (let i = 0; i < 9; i++) { const p = cariTempat(2.2); if (p) pelat(p[0], p[1]); }
+for (let i = 0; i < 12; i++) { const p = cariTempat(.8); if (p) kolom(p[0], p[1]); }
+for (let i = 0; i < 12; i++) { const p = cariTempat(1.4); if (p) puing(p[0], p[1]); }
+// kerikil kecil (instanced, tanpa tabrakan)
+{
+  const geo = new THREE.DodecahedronGeometry(.08, 0), im = new THREE.InstancedMesh(geo, M.beton2, 900), d = new THREE.Object3D();
+  for (let i = 0; i < 900; i++) { d.position.set((rnd() - .5) * ARENA, .03, (rnd() - .5) * ARENA); d.rotation.set(rnd() * 3, rnd() * 3, 0); d.scale.setScalar(.4 + rnd() * 1.4); d.updateMatrix(); im.setMatrixAt(i, d.matrix); }
+  reg(im, .1, false, false);
+}
+// debu melayang
+const dust = (() => {
+  const n = 500, pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) { pos[i * 3] = (rnd() - .5) * 20; pos[i * 3 + 1] = rnd() * 3; pos[i * 3 + 2] = (rnd() - .5) * 20; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xd8c8b0, size: .025, transparent: true, opacity: .55, depthWrite: false })); scene.add(p); return p;
+})();
+
+// ---------- Korban & sumber panas palsu ----------
+const targets = []; // {kind:'korban'|'api'|'mesin', pos, found, mesh}
+const kulit = [0xc68e6a, 0xa8714f, 0x8d5a3c, 0xe0ac86], baju = [0x3b5b8a, 0x8a3b3b, 0x4a6a3b, 0x6a5a8a, 0x8a7a3b];
+function korban(x, z, i) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rnd() * 6.28;
+  const kM = new THREE.MeshStandardMaterial({ color: kulit[i % 4], roughness: .8 }), bM = new THREE.MeshStandardMaterial({ color: baju[i % 5], roughness: .9 });
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(.16, .5, 4, 10), bM); body.rotation.z = Math.PI / 2; body.position.y = .17; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.12, 14, 10), kM); head.position.set(.48, .17, 0); g.add(head);
+  const legs = new THREE.Mesh(new THREE.CapsuleGeometry(.1, .55, 4, 8), new THREE.MeshStandardMaterial({ color: 0x2a2a35 })); legs.rotation.z = Math.PI / 2; legs.position.set(-.55, .12, .07); g.add(legs);
+  const arm = new THREE.Group(); arm.position.set(.25, .25, .14); g.add(arm);
+  const armM = new THREE.Mesh(new THREE.CapsuleGeometry(.05, .4, 4, 8), kM); armM.position.y = .22; arm.add(armM); arm.rotation.x = -0.5;
+  // tertimpa pelat kecil
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(.9, .14, .8), M.beton); slab.position.set(-.5, .32, 0); slab.rotation.z = .25; g.add(slab);
+  scene.add(g);
+  g.traverse(o => { if (o.isMesh) { o.userData.heat = o === slab ? 0.2 : 0.88; allMeshes.push(o); } });
+  solids.push({ x, z, hx: .55, hz: .55, a: 0, round: true }); area.push([x, z, 1.2]);
+  targets.push({ kind: 'korban', pos: new THREE.Vector3(x, .25, z), found: false, wrong: false, mesh: g, arm, phase: rnd() * 6 });
+}
+const flameTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); const g = x.createRadialGradient(32, 40, 2, 32, 36, 30);
+  g.addColorStop(0, 'rgba(255,250,200,1)'); g.addColorStop(.35, 'rgba(255,170,40,.9)'); g.addColorStop(1, 'rgba(255,60,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+const flames = [];
+function api(x, z) {
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(.3, .3, .8, 16), new THREE.MeshStandardMaterial({ color: 0x5a2a1a, metalness: .5, roughness: .6 }));
+  drum.position.set(x, .4, z); reg(drum, 0.97);
+  for (let i = 0; i < 3; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    s.position.set(x + (rnd() - .5) * .2, .95 + i * .15, z + (rnd() - .5) * .2); s.scale.set(.6, .8, 1); scene.add(s); flames.push({ s, ph: rnd() * 6, base: s.position.y }); }
+  solidBox(x, z, .7, .7); area.push([x, z, 1]);
+  targets.push({ kind: 'api', pos: new THREE.Vector3(x, .6, z), found: false, mesh: drum });
+}
+function mesin(x, z) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(1, .7, .6), new THREE.MeshStandardMaterial({ color: 0xc8a020, metalness: .4, roughness: .5 }));
+  m.position.set(x, .35, z); m.rotation.y = rnd() * 3; reg(m, 0.72);
+  solidBox(x, z, 1.1, .7, m.rotation.y); area.push([x, z, .9]);
+  targets.push({ kind: 'mesin', pos: new THREE.Vector3(x, .5, z), found: false, mesh: m });
+}
+for (let i = 0; i < N_KORBAN; i++) { const p = cariTempat(1.3, 2000); if (p) korban(p[0], p[1], i); }
+for (let i = 0; i < 2; i++) { const p = cariTempat(1.1, 2000); if (p) api(p[0], p[1]); }
+{ const p = cariTempat(1, 2000); if (p) mesin(p[0], p[1]); }
+
+// ---------- Badan robot (yang terlihat dari kokpit) ----------
+{
+  const bodyM = new THREE.MeshStandardMaterial({ color: 0xff7a2a, roughness: .5, metalness: .2 });
+  const darkM = new THREE.MeshStandardMaterial({ color: 0x22252d, roughness: .7 });
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(.7, .22, 1.0), bodyM); hull.position.set(0, .32, .1); robot.add(hull);
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(.6, .12, .3), bodyM); nose.position.set(0, .3, -.48); nose.rotation.x = .4; robot.add(nose);
+  for (const s of [-1, 1]) { const tr = new THREE.Mesh(new THREE.BoxGeometry(.16, .26, 1.15), darkM); tr.position.set(s * .43, .14, .1); robot.add(tr);
+    for (let i = 0; i < 9; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(.17, .03, .05), M.besi); c.position.set(s * .43, .275, -.45 + i * .13); robot.add(c); } }
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, CAM_H - .5, 8), darkM); mast.position.set(0, (CAM_H + .5) / 2 - .1, .25); robot.add(mast);
+  const lamp = new THREE.Mesh(new THREE.BoxGeometry(.5, .05, .05), new THREE.MeshBasicMaterial({ color: 0xfff4d0 })); lamp.position.set(0, .45, -.45); robot.add(lamp);
+}
+robot.children.forEach(o => { if (o.isMesh) { o.userData.heat = .3; allMeshes.push(o); } });
+const headlight = new THREE.SpotLight(0xfff0d0, 25, 14, .55, .5, 1.6); headlight.position.set(0, .5, -.4); robot.add(headlight); headlight.target.position.set(0, 0, -6); robot.add(headlight.target);
+
+// ---------- Kamera termal (render ke tekstur) ----------
+const TW = 384, TH = 216;
+const thermalRT = new THREE.WebGLRenderTarget(TW, TH);
+const thermalCam = new THREE.PerspectiveCamera(48, TW / TH, .05, 40); thermalCam.position.set(0, .55, -.45); thermalCam.rotation.x = -.14; robot.add(thermalCam);
+const thermMats = new Map();
+function warnaPanas(h) { // palet "ironbow": dingin ungu tua → oranye → kuning-putih
+  const stops = [[0, [10, 8, 40]], [.25, [70, 20, 110]], [.5, [190, 40, 90]], [.7, [240, 110, 30]], [.85, [255, 200, 40]], [1, [255, 255, 230]]];
+  for (let i = 1; i < stops.length; i++) if (h <= stops[i][0]) { const [a, ca] = stops[i - 1], [b, cb] = stops[i], t = (h - a) / (b - a); return new THREE.Color(...ca.map((v, k) => (v + (cb[k] - v) * t) / 255)); }
+  return new THREE.Color(1, 1, .9);
+}
+function thermMat(h) { const k = Math.round(h * 20); if (!thermMats.has(k)) thermMats.set(k, new THREE.MeshBasicMaterial({ color: warnaPanas(k / 20) })); return thermMats.get(k); }
+const thermFog = new THREE.Fog(0x0a0828, 3, 22), thermBg = new THREE.Color(0x0a0828);
+let thermT = 0, thermalOn = true;
+function renderTermal() {
+  const xr = renderer.xr.enabled; renderer.xr.enabled = false;
+  const fog = scene.fog, bg = scene.background; scene.fog = thermFog; scene.background = thermBg;
+  for (const m of allMeshes) { m.userData.mat = m.material; m.material = thermMat(m.userData.heat ?? .1); }
+  const hide = [dust, ...flames.map(f => f.s), cockpit, hud]; const vis = hide.map(o => o.visible); hide.forEach(o => o.visible = false);
+  renderer.setRenderTarget(thermalRT); renderer.render(scene, thermalCam); renderer.setRenderTarget(null);
+  hide.forEach((o, i) => o.visible = vis[i]);
+  for (const m of allMeshes) m.material = m.userData.mat;
+  scene.fog = fog; scene.background = bg; renderer.xr.enabled = xr;
+}
+
+// ---------- Kokpit (menempel pada rig, di depan pengemudi) ----------
+const cockpit = new THREE.Group(); rig.add(cockpit);
+function makePanelC(w, h, cw, ch) { const c = document.createElement('canvas'); c.width = cw; c.height = ch; const ctx = c.getContext('2d'); const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, transparent: true })); return { mesh, ctx, tex, c }; }
+// ---------- Panel teks ----------
+function makePanel(w, h, cw, ch) {
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+  const ctx = c.getContext('2d'); const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+  return { mesh, ctx, tex, c };
+}
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function wrap(ctx, text, x, y, maxW, lh) {
+  const words = text.split(' '); let line = '';
+  for (const w of words) { const t = line ? line + ' ' + w : w;
+    if (ctx.measureText(t).width > maxW && line) { ctx.fillText(line, x, y); line = w; y += lh; } else line = t; }
+  if (line) ctx.fillText(line, x, y); return y;
+}
+
+
+const frameM = new THREE.MeshStandardMaterial({ color: 0x1c1f27, roughness: .6, metalness: .4 });
+{
+  const dash = new THREE.Mesh(new THREE.BoxGeometry(1.5, .06, .45), frameM); dash.position.set(0, -.42, -.55); dash.rotation.x = -.15; cockpit.add(dash);
+  for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(.05, 1.0, .05), frameM); p.position.set(s * .78, 0, -.72); p.rotation.z = s * .18; cockpit.add(p); }
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.7, .05, .05), frameM); top.position.set(0, .46, -.72); cockpit.add(top);
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(1.5, .012, .012), new THREE.MeshBasicMaterial({ color: 0xff7a2a })); edge.position.set(0, -.39, -.33); cockpit.add(edge);
+}
+// layar termal
+const tScreen = new THREE.Mesh(new THREE.PlaneGeometry(.48, .27), new THREE.MeshBasicMaterial({ map: thermalRT.texture }));
+tScreen.position.set(0, -.27, -.58); tScreen.rotation.x = -.35; cockpit.add(tScreen);
+const tFrame = makePanelC(.52, .33, 520, 330); tFrame.mesh.position.set(0, -.265, -.582); tFrame.mesh.rotation.x = -.35; cockpit.add(tFrame.mesh);
+{ const { ctx, c } = tFrame; ctx.clearRect(0, 0, c.width, c.height); ctx.strokeStyle = '#ff7a2a'; ctx.lineWidth = 6; rr(ctx, 6, 6, c.width - 12, c.height - 12, 16); ctx.stroke();
+  ctx.fillStyle = '#ffb37a'; ctx.font = `bold 20px ${FONT}`; ctx.fillText(L('KAMERA TERMAL', 'THERMAL CAMERA'), 26, 30);
+  ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 3; const cx = c.width / 2, cy = c.height / 2 + 8;
+  ctx.beginPath(); ctx.moveTo(cx - 34, cy); ctx.lineTo(cx - 12, cy); ctx.moveTo(cx + 12, cy); ctx.lineTo(cx + 34, cy); ctx.moveTo(cx, cy - 34); ctx.lineTo(cx, cy - 12); ctx.moveTo(cx, cy + 12); ctx.lineTo(cx, cy + 34); ctx.stroke();
+  // legenda suhu
+  for (let i = 0; i < 100; i++) { ctx.fillStyle = '#' + warnaPanas(i / 99).getHexString(); ctx.fillRect(c.width - 40, c.height - 40 - i * 2.2, 14, 2.3); }
+  ctx.fillStyle = '#fff'; ctx.font = `15px ${FONT}`; ctx.fillText(L('panas', 'hot'), c.width - 92, c.height - 252); ctx.fillText(L('dingin', 'cold'), c.width - 96, c.height - 42);
+  tFrame.tex.needsUpdate = true; }
+const peta = makePanelC(.3, .3, 512, 512); peta.mesh.position.set(-.44, -.27, -.55); peta.mesh.rotation.set(-.35, .35, 0, 'YXZ'); cockpit.add(peta.mesh);
+const stat = makePanelC(.32, .3, 540, 512); stat.mesh.position.set(.45, -.27, -.55); stat.mesh.rotation.set(-.35, -.35, 0, 'YXZ'); cockpit.add(stat.mesh);
+// tombol kokpit
+const buttons = [];
+function tombol(label, x, y, color, action) {
+  const p = makePanelC(.13, .05, 260, 100); const { ctx, c } = p;
+  ctx.fillStyle = color; rr(ctx, 4, 4, c.width - 8, c.height - 8, 22); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = `bold 34px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, c.width / 2, c.height / 2 + 2); p.tex.needsUpdate = true;
+  p.mesh.position.set(x, y, -.5); p.mesh.rotation.x = -.5; p.mesh.userData.action = action; cockpit.add(p.mesh); buttons.push(p.mesh); return p.mesh;
+}
+tombol(L('↺ Ulang', '↺ Restart'), -.2, -.44, '#6b5a2f', () => mulai());
+tombol(L('✕ Keluar', '✕ Exit'), .2, -.44, '#8a2433', () => { try { renderer.xr.getSession()?.end(); } catch (e) {} });
+
+// HUD vignette (pengurang pusing) — cincin gelap menempel di kamera
+const hud = new THREE.Group(); camera.add(hud);
+const vignette = new THREE.Mesh(new THREE.RingGeometry(.09, .5, 48), new THREE.ShaderMaterial({
+  transparent: true, depthTest: false, depthWrite: false,
+  uniforms: { k: { value: 0 } },
+  vertexShader: 'varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+  fragmentShader: 'uniform float k; varying vec2 vP; void main(){ float r = length(vP); float a = smoothstep(0.16 - k*0.07, 0.30 - k*0.09, r) * k; gl_FragColor = vec4(0.02,0.02,0.03,a); }',
+}));
+vignette.position.z = -.12; vignette.renderOrder = 999; hud.add(vignette);
+const hint = makePanelC(.16, .03, 640, 120); hint.mesh.position.set(0, .055, -.2); hint.mesh.material.depthTest = false; hint.mesh.renderOrder = 1000; hud.add(hint.mesh);
+let hintT = 0;
+function tampilHint(text, color = '#fff', dur = 2.2) { const { ctx, c } = hint; ctx.clearRect(0, 0, c.width, c.height); ctx.fillStyle = 'rgba(10,12,20,.75)'; rr(ctx, 4, 4, c.width - 8, c.height - 8, 40); ctx.fill();
+  ctx.fillStyle = color; ctx.font = `bold 52px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, c.width / 2, c.height / 2 + 2); hint.tex.needsUpdate = true; hintT = dur; hint.mesh.visible = true; }
+hint.mesh.visible = false;
+
+// ---------- Suara ----------
+let ac = null, motor = null, motorGain = null;
+function initAudio() {
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)();
+    motor = ac.createOscillator(); motor.type = 'sawtooth'; motor.frequency.value = 55;
+    const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 320;
+    motorGain = ac.createGain(); motorGain.gain.value = 0; motor.connect(f).connect(motorGain).connect(ac.destination); motor.start(); } catch (e) {} }
+  ac?.resume?.();
+}
+function tone(f, d, type = 'sine', vol = .2) { if (!ac) return; const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = f; g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + .02); }
+addEventListener('pointerdown', initAudio); addEventListener('click', initAudio, true);
+renderer.xr.addEventListener('sessionstart', initAudio);
+
+// ---------- Keadaan misi ----------
+const S = { x: 0, z: 0, h: 0, v: 0, w: 0, t: 0, found: 0, salah: 0, selesai: false, nabrak: 0, jejak: [] };
+const START = { x: 0, z: 0 };
+function mulai() {
+  Object.assign(S, { x: START.x, z: START.z, h: 0, v: 0, w: 0, t: 0, found: 0, salah: 0, selesai: false, nabrak: 0, jejak: [] });
+  for (const t of targets) { t.found = false; t.wrong = false; if (t.marker) { scene.remove(t.marker); t.marker = null; } }
+  tampilHint(L('Temukan 5 korban!', 'Find 5 victims!'), '#ffd23f', 3);
+}
+// ---------- Tabrakan (lingkaran robot vs kotak berputar) ----------
+const RAD = .5;
+function dorongKeluar() {
+  let kena = false;
+  for (const o of solids) {
+    const c = Math.cos(o.a), s = Math.sin(o.a), dx = S.x - o.x, dz = S.z - o.z;
+    const lx = dx * c - dz * s, lz = dx * s + dz * c;   // ke ruang lokal kotak (invers rotasi Y)
+    if (o.round) { const d = Math.hypot(dx, dz), r = o.hx + RAD; if (d < r && d > 1e-6) { S.x = o.x + dx / d * r; S.z = o.z + dz / d * r; kena = true; } continue; }
+    const px = R.clamp(lx, -o.hx, o.hx), pz = R.clamp(lz, -o.hz, o.hz), ex = lx - px, ez = lz - pz, d = Math.hypot(ex, ez);
+    if (d < RAD) {
+      let nx, nz, pen;
+      if (d > 1e-6) { nx = ex / d; nz = ez / d; pen = RAD - d; }
+      else { const ox = o.hx - Math.abs(lx), oz = o.hz - Math.abs(lz); if (ox < oz) { nx = Math.sign(lx) || 1; nz = 0; pen = ox + RAD; } else { nx = 0; nz = Math.sign(lz) || 1; pen = oz + RAD; } }
+      const wx = nx * Math.cos(o.a) + nz * Math.sin(o.a), wz = -nx * Math.sin(o.a) + nz * Math.cos(o.a); // kembali ke dunia
+      S.x += wx * pen; S.z += wz * pen; kena = true;
+    }
+  }
+  return kena;
+}
+function langkah(thr, steer, dt) {   // fisika robot: thr, steer ∈ [-1,1]
+  const tv = thr * VMAX * (thr < 0 ? .6 : 1), tw = steer * WMAX;
+  S.v += (tv - S.v) * (1 - Math.exp(-dt * 3)); S.w += (tw - S.w) * (1 - Math.exp(-dt * 4));
+  S.h += S.w * dt; S.x += -Math.sin(S.h) * S.v * dt; S.z += -Math.cos(S.h) * S.v * dt;
+  if (dorongKeluar()) { S.v *= .4; S.nabrak += dt; } else S.nabrak = 0;
+}
+
+// ---------- Menandai korban ----------
+const rc = new THREE.Raycaster(); const tmp = new THREE.Vector3(), fwd = new THREE.Vector3();
+const markerGeo = new THREE.ConeGeometry(.12, .3, 4);
+function tandai() {
+  if (S.selesai) return;
+  const eye = new THREE.Vector3(S.x, .55, S.z); fwd.set(-Math.sin(S.h), 0, -Math.cos(S.h));
+  let best = null, bs = 1e9;
+  for (const t of targets) {
+    if (t.found) continue;
+    tmp.copy(t.pos).sub(eye); const d = tmp.length(); if (d > JARAK_TANDA) continue;
+    const ang = Math.acos(R.clamp(tmp.clone().setY(0).normalize().dot(fwd), -1, 1)); if (ang > 0.42) continue;
+    rc.set(eye, tmp.clone().normalize()); rc.far = d; if (rc.intersectObjects(losMeshes, false).some(h => h.object !== t.mesh && h.distance < d - .3)) continue; // tertutup puing (tubuh target sendiri tidak dihitung)
+    const sc = d + ang * 3; if (sc < bs) { bs = sc; best = t; }
+  }
+  if (!best) { tampilHint(L('Tidak ada sumber panas di depan', 'No heat source ahead'), '#cfd6ff'); tone(300, .12, 'square', .08); return 'kosong'; }
+  best.found = true;
+  const mk = new THREE.Mesh(markerGeo, new THREE.MeshBasicMaterial({ color: best.kind === 'korban' ? 0x3ee089 : 0xff3b5c })); mk.rotation.x = Math.PI;
+  mk.position.copy(best.pos).setY(1.3); scene.add(mk); best.marker = mk; mk.userData.heat = .5;
+  if (best.kind === 'korban') {
+    S.found++; tampilHint(L(`Korban ditemukan! ${S.found}/${N_KORBAN}`, `Victim found! ${S.found}/${N_KORBAN}`), '#7dffa0'); [880, 1175, 1568].forEach((f, i) => setTimeout(() => tone(f, .15, 'triangle', .18), i * 90));
+    if (S.found >= N_KORBAN) selesai();
+  } else {
+    S.salah++; best.wrong = true; tampilHint(best.kind === 'api' ? L('Bukan korban: drum terbakar', 'Not a victim: burning drum') : L('Bukan korban: genset panas', 'Not a victim: hot generator'), '#ff8aa5', 2.6); tone(160, .35, 'sawtooth', .14);
+  }
+  for (const o of ctrls) haptic(o, .7, 80);
+  return best.kind;
+}
+function selesai() { S.selesai = true; setTimeout(() => tampilHint(L(`Misi selesai! ${S.found} korban · ${Math.round(S.t)} s`, `Mission complete! ${S.found} victims · ${Math.round(S.t)} s`), '#ffd23f', 6), 900); }
+
+// ---------- Kontrol ----------
+const ctrls = [0, 1].map(i => {
+  const c = renderer.xr.getController(i); rig.add(c);
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -1)]), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: .4 }));
+  line.scale.z = .6; c.add(line);
+  const o = { c, line, source: null, hover: null };
+  c.addEventListener('connected', e => { o.source = e.data; });
+  c.addEventListener('disconnected', () => { o.source = null; });
+  c.addEventListener('selectstart', () => { initAudio(); if (o.hover) { o.hover.userData.action(); haptic(o, .5, 40); } else tandai(); });
+  return o;
+});
+function haptic(o, s, ms) { try { o?.source?.gamepad?.hapticActuators?.[0]?.pulse(s, ms); } catch (e) {} }
+const keys = {}; addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space') { e.preventDefault(); initAudio(); tandai(); } }); addEventListener('keyup', e => keys[e.code] = false);
+// mode laptop: seret mouse untuk melihat sekeliling, klik tombol kokpit
+let look = { yaw: 0, pitch: -.12 }, drag = null;
+const mouse = new THREE.Vector2();
+renderer.domElement.addEventListener('pointerdown', ev => {
+  if (renderer.xr.isPresenting) return;
+  mouse.set(ev.clientX / innerWidth * 2 - 1, -ev.clientY / innerHeight * 2 + 1); rc.setFromCamera(mouse, camera); rc.far = 5;
+  const hit = rc.intersectObjects(buttons, false)[0]; rc.far = Infinity; if (hit) { hit.object.userData.action(); return; }
+  drag = { x: ev.clientX, y: ev.clientY, yaw: look.yaw, pitch: look.pitch };
+});
+addEventListener('pointermove', ev => { if (!drag) return; look.yaw = drag.yaw - (ev.clientX - drag.x) * .004; look.pitch = R.clamp(drag.pitch - (ev.clientY - drag.y) * .004, -1, .8); });
+addEventListener('pointerup', () => drag = null);
+function bacaInput() {
+  let thr = 0, st = 0;
+  for (const o of ctrls) { const gp = o.source?.gamepad; if (!gp?.axes) continue;
+    const x = gp.axes.length >= 4 ? gp.axes[2] : gp.axes[0] || 0, y = gp.axes.length >= 4 ? gp.axes[3] : gp.axes[1] || 0;
+    if (o.source.handedness === 'left') { thr = -y; if (Math.abs(x) > .2) st = -x; } else if (Math.abs(x) > Math.abs(st)) st = -x; }
+  if (!renderer.xr.isPresenting) { thr = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0); st = (keys.KeyA || keys.ArrowLeft ? 1 : 0) - (keys.KeyD || keys.ArrowRight ? 1 : 0); }
+  const dz = v => Math.abs(v) < .15 ? 0 : (v - Math.sign(v) * .15) / .85;
+  return [dz(thr), dz(st)];
+}
+function updatePointers() {
+  for (const o of ctrls) { o.hover = null; if (!o.source) continue;
+    tmpM.identity().extractRotation(o.c.matrixWorld); rc.ray.origin.setFromMatrixPosition(o.c.matrixWorld); rc.ray.direction.set(0, 0, -1).applyMatrix4(tmpM); rc.far = 2;
+    const hit = rc.intersectObjects(buttons, false)[0]; rc.far = Infinity; if (hit) { o.hover = hit.object; o.line.scale.z = hit.distance; } else o.line.scale.z = .6; }
+}
+const tmpM = new THREE.Matrix4();
+
+// ---------- Peta mini & status ----------
+const SC = 512 / ARENA;
+const petaBase = (() => { const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d');
+  x.fillStyle = '#141018'; x.fillRect(0, 0, 512, 512);
+  x.fillStyle = 'rgba(200,180,160,.55)';
+  for (const o of solids) { x.save(); x.translate((o.x + ARENA / 2) * SC, (o.z + ARENA / 2) * SC); x.rotate(-o.a);
+    if (o.round) { x.beginPath(); x.arc(0, 0, o.hx * SC, 0, 7); x.fill(); } else x.fillRect(-o.hx * SC, -o.hz * SC, o.hx * 2 * SC, o.hz * 2 * SC); x.restore(); }
+  return c; })();
+function gambarPeta() {
+  const { ctx, c } = peta; ctx.clearRect(0, 0, 512, 512);
+  ctx.save(); rr(ctx, 4, 4, 504, 504, 30); ctx.clip(); ctx.drawImage(petaBase, 0, 0);
+  ctx.strokeStyle = 'rgba(255,122,42,.8)'; ctx.lineWidth = 5; ctx.beginPath();
+  S.jejak.forEach(([x, z], i) => { const px = (x + ARENA / 2) * SC, pz = (z + ARENA / 2) * SC; i ? ctx.lineTo(px, pz) : ctx.moveTo(px, pz); }); ctx.stroke();
+  for (const t of targets) if (t.found) { ctx.fillStyle = t.kind === 'korban' ? '#3ee089' : '#ff3b5c'; ctx.beginPath(); ctx.arc((t.pos.x + ARENA / 2) * SC, (t.pos.z + ARENA / 2) * SC, 11, 0, 7); ctx.fill(); }
+  const px = (S.x + ARENA / 2) * SC, pz = (S.z + ARENA / 2) * SC; ctx.translate(px, pz); ctx.rotate(-S.h);
+  ctx.fillStyle = 'rgba(255,210,63,.18)'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, JARAK_TANDA * SC, -Math.PI / 2 - .42, -Math.PI / 2 + .42); ctx.fill();
+  ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.moveTo(0, -18); ctx.lineTo(12, 12); ctx.lineTo(-12, 12); ctx.closePath(); ctx.fill(); ctx.restore();
+  ctx.strokeStyle = '#ff7a2a'; ctx.lineWidth = 6; rr(ctx, 4, 4, 504, 504, 30); ctx.stroke();
+  ctx.fillStyle = '#ffb37a'; ctx.font = `bold 30px ${FONT}`; ctx.fillText(L('PETA', 'MAP'), 24, 44); peta.tex.needsUpdate = true;
+}
+let lastStat = '';
+function gambarStatus() {
+  const sisa = Math.max(0, DURASI - S.t), key = [S.found, S.salah, Math.ceil(sisa), S.selesai, Math.round(Math.abs(S.v) * 10)].join('|'); if (key === lastStat) return; lastStat = key;
+  const { ctx, c } = stat; ctx.clearRect(0, 0, c.width, c.height); glass(ctx, c.width, c.height, 'rgba(255,122,42,.9)', 30);
+  ctx.textAlign = 'left'; ctx.fillStyle = '#ffb37a'; ctx.font = `bold 30px ${FONT}`; ctx.fillText(L('MISI SAR', 'SAR MISSION'), 32, 56);
+  ctx.fillStyle = '#fff'; ctx.font = `bold 84px ${FONT}`; ctx.fillText(`${S.found}/${N_KORBAN}`, 32, 152);
+  ctx.font = `30px ${FONT}`; ctx.fillStyle = '#d6dcf5'; ctx.fillText(L('korban ditemukan', 'victims found'), 32, 194);
+  ctx.fillStyle = S.salah ? '#ff8aa5' : '#9aa3c7'; ctx.fillText(L(`Salah tandai: ${S.salah}`, `Wrong marks: ${S.salah}`), 32, 248);
+  const m = Math.floor(sisa / 60), s = Math.floor(sisa % 60); ctx.fillStyle = sisa < 30 ? '#ff6b8a' : '#ffd23f'; ctx.font = `bold 56px ${FONT}`;
+  ctx.fillText(`⏱ ${m}:${String(s).padStart(2, '0')}`, 32, 330);
+  ctx.fillStyle = '#9aa3c7'; ctx.font = `26px ${FONT}`; ctx.fillText(L(`Kecepatan ${(Math.abs(S.v)).toFixed(1)} m/s`, `Speed ${(Math.abs(S.v)).toFixed(1)} m/s`), 32, 372);
+  ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = `22px ${FONT}`;
+  wrap(ctx, L('Stik kiri: jalan · stik kanan: belok · Trigger: tandai yang di tengah layar termal', 'Left stick: drive · right stick: turn · Trigger: mark what\'s in the centre of the thermal screen'), 32, 412, c.width - 64, 28);
+  stat.tex.needsUpdate = true;
+}
+
+// ---------- Loop ----------
+const clock = new THREE.Clock(); let petaT = 0, jejakT = 0, now = 0;
+mulai();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), .05); now += dt;
+  updatePointers();
+  const [thr, st] = S.selesai || S.t >= DURASI ? [0, 0] : bacaInput();
+  langkah(thr, st, dt);
+  if (!S.selesai) { S.t += dt; if (S.t >= DURASI) { S.selesai = true; tampilHint(L(`Waktu habis! ${S.found}/${N_KORBAN} korban`, `Time's up! ${S.found}/${N_KORBAN} victims`), '#ffd23f', 6); } }
+  robot.position.set(S.x, 0, S.z); robot.rotation.y = S.h;
+  if (!renderer.xr.isPresenting) camera.rotation.set(look.pitch, look.yaw, 0, 'YXZ');
+  // anti-pusing: vignette makin gelap saat robot bergerak/berbelok
+  const k = R.clamp(Math.abs(S.w) / WMAX * .9 + Math.abs(S.v) / VMAX * .45, 0, 1);
+  vignette.material.uniforms.k.value += (k - vignette.material.uniforms.k.value) * (1 - Math.exp(-dt * 6));
+  if (S.nabrak > 0 && S.nabrak < .05) { tone(90, .12, 'square', .1); for (const o of ctrls) haptic(o, .4, 50); }
+  jejakT += dt; if (jejakT > .4) { jejakT = 0; const l = S.jejak[S.jejak.length - 1]; if (!l || Math.hypot(l[0] - S.x, l[1] - S.z) > .3) { S.jejak.push([S.x, S.z]); if (S.jejak.length > 600) S.jejak.shift(); } }
+  // animasi: tangan korban melambai, api, debu mengikuti robot
+  for (const t of targets) if (t.kind === 'korban' && !t.found) t.arm.rotation.x = -0.5 + Math.sin(now * 3 + t.phase) * .45;
+  for (const f of flames) { f.s.position.y = f.base + Math.sin(now * 9 + f.ph) * .05; f.s.material.opacity = .75 + Math.sin(now * 13 + f.ph) * .25; }
+  dust.position.set(Math.round(S.x / 10) * 10, 0, Math.round(S.z / 10) * 10);
+  for (const t of targets) if (t.marker) t.marker.rotation.y += dt * 2;
+  if (motorGain) { const load = Math.abs(S.v) / VMAX + Math.abs(S.w) / WMAX * .5; motorGain.gain.setTargetAtTime(Math.min(.09, load * .07), ac.currentTime, .05); motor.frequency.setTargetAtTime(48 + load * 50, ac.currentTime, .05); }
+  if (hintT > 0) { hintT -= dt; if (hintT <= 0) hint.mesh.visible = false; }
+  thermT += dt; if (thermT > 1 / 15) { thermT = 0; renderTermal(); }
+  petaT += dt; if (petaT > .2) { petaT = 0; gambarPeta(); gambarStatus(); }
+  updatePopups();
+  renderer.render(scene, camera);
+});
+
+// kait uji
+window.__fpv = {
+  S, targets: () => targets.map(t => ({ kind: t.kind, x: +t.pos.x.toFixed(2), z: +t.pos.z.toFixed(2), found: t.found })),
+  jalan(thr, st, detik) { const n = Math.round(detik / .02); for (let i = 0; i < n; i++) langkah(thr, st, .02); return { x: S.x, z: S.z, h: S.h }; },
+  taruh(x, z, h) { S.x = x; S.z = z; S.h = h; S.v = S.w = 0; dorongKeluar(); return { x: S.x, z: S.z }; },
+  hadap(t) { const tg = targets[t]; S.h = Math.atan2(-(tg.pos.x - S.x), -(tg.pos.z - S.z)); },
+  tandai, solids: () => solids.length, termal: () => { renderTermal(); const buf = new Uint8Array(TW * TH * 4); renderer.readRenderTargetPixels(thermalRT, 0, 0, TW, TH, buf); return buf; },
+  tembus: (x, z) => { const sx = S.x, sz = S.z; S.x = x; S.z = z; dorongKeluar(); const d = Math.hypot(S.x - x, S.z - z); S.x = sx; S.z = sz; return d; },
+  bebasDi: (x, z) => { const sx = S.x, sz = S.z; S.x = x; S.z = z; const k = dorongKeluar(); const r = !k; S.x = sx; S.z = sz; return r; },
+};
+</script>
+</body>
+</html>

@@ -7,6 +7,9 @@
 <meta name="description" content="Pop Bola: pecahkan bola dengan tangan atau controller, di VR atau Mixed Reality.">
 <meta name="theme-color" content="#05060f">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="title-en" content="Bubble Pop VR">
+<meta name="description-en" content="Bubble Pop: pop the bubbles around you in VR or Mixed Reality.">
+<script src="i18n.js"></script>
 <link rel="stylesheet" href="tema.css">
 <style>
   :root{--accent:#33ddff;--a1:#33ddff;--a2:#2a6df4}
@@ -23,20 +26,20 @@
 <div class="xr-aura" aria-hidden="true"><i></i><i></i><i></i></div>
 <header class="xr-top">
   <div class="xr-left"><a class="xr-back" href="./">← Menu</a>
-    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span>Pop Bola</span></div></div></div>
-  <div class="xr-pill" id="xrStatus">Memeriksa perangkat…</div>
+    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span data-en="Bubble Pop">Pop Bola</span></div></div></div>
+  <div class="xr-pill" id="xrStatus" data-en="Checking device…" data-en-if="Memeriksa perangkat…">Memeriksa perangkat…</div>
 </header>
 <div id="ov">
-  <div class="xr-head"><div class="xr-icon">🎈</div><div><div class="tags"><span class="tag hot">Pemula</span><span class="tag">Hand tracking</span><span class="tag">Mixed Reality</span></div><h1>Pop Bola</h1></div></div>
-  <p>Bola bermunculan di sekitarmu. Pecahkan dengan ujung jari atau controller. Biru +1, emas +5, merah −3. Mode Mixed Reality membuat bola muncul di ruangan nyatamu!</p>
-  <div class="btns"><button class="btn primary" id="btnAR" disabled>Mulai Mixed Reality <span class="arw">→</span></button><button class="btn" id="btnVR" disabled>Mulai VR</button></div>
-  <div id="msg">Memeriksa perangkat…</div>
+  <div class="xr-head"><div class="xr-icon">🎈</div><div><div class="tags"><span class="tag hot" data-en="Beginner">Pemula</span><span class="tag">Hand tracking</span><span class="tag">Mixed Reality</span></div><h1 data-en="Bubble Pop">Pop Bola</h1></div></div>
+  <p data-en="Bubbles pop up all around you. Burst them with your fingertip or controller. Blue +1, gold +5, red −3. Mixed Reality mode makes the bubbles appear in your real room!">Bola bermunculan di sekitarmu. Pecahkan dengan ujung jari atau controller. Biru +1, emas +5, merah −3. Mode Mixed Reality membuat bola muncul di ruangan nyatamu!</p>
+  <div class="btns"><button class="btn primary" id="btnAR" disabled data-en="Start Mixed Reality <span class=&quot;arw&quot;>→</span>">Mulai Mixed Reality <span class="arw">→</span></button><button class="btn" id="btnVR" disabled data-en="Start VR">Mulai VR</button></div>
+  <div id="msg" data-en="Checking device…" data-en-if="Memeriksa perangkat…">Memeriksa perangkat…</div>
 </div>
 <script type="module">
 import * as THREE from 'three';
 
 // ====== PENGATURAN (silakan ubah) ======
-const EVENT_NAME = 'Pameran Kampus UVERS';
+const EVENT_NAME = L('Pameran Kampus UVERS', 'UVERS Campus Exhibition');
 const DURATION   = 60;          // detik per ronde
 const TYPES = {
   normal: { color: 0x33ddff, pts:  1, r: 0.070 },
@@ -134,7 +137,7 @@ label.mesh.position.set(0, 1.42, -0.45); scene.add(label.mesh);
 { const { ctx, c } = label; ctx.clearRect(0, 0, c.width, c.height);
   glass(ctx, c.width, c.height, 'rgba(125,255,160,.85)', 30);
   ctx.fillStyle = '#7dffa0'; ctx.font = `bold 42px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('SENTUH UNTUK MULAI', 256, 66); label.tex.needsUpdate = true; }
+  ctx.fillText(L('SENTUH UNTUK MULAI', 'TOUCH TO START'), 256, 66); label.tex.needsUpdate = true; }
 
 const startBtn = new THREE.Mesh(new THREE.SphereGeometry(0.08, 32, 16),
   new THREE.MeshStandardMaterial({ color: 0x33ff77, emissive: 0x118833 }));
@@ -146,7 +149,7 @@ exitBtn.position.set(0.3, 1.2, -0.5); scene.add(exitBtn);
 const exitLabel = makePanel(0.2, 0.06, 320, 96); exitLabel.mesh.position.set(0.3, 1.3, -0.5); scene.add(exitLabel.mesh);
 { const { ctx, c } = exitLabel; glass(ctx, c.width, c.height, 'rgba(255,90,120,.9)', 26);
   ctx.fillStyle = '#fff'; ctx.font = `700 46px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('KELUAR', c.width / 2, c.height / 2 + 3); exitLabel.tex.needsUpdate = true; }
+  ctx.fillText(L('KELUAR', 'EXIT'), c.width / 2, c.height / 2 + 3); exitLabel.tex.needsUpdate = true; }
 function exitXR() { try { renderer.xr.getSession()?.end(); } catch (e) {} }
 
 // ---------- State game ----------
@@ -164,24 +167,24 @@ function drawBoard() {
   ctx.fillStyle = '#9fd8ff'; ctx.font = `32px ${FONT}`; ctx.fillText(EVENT_NAME, 512, 50);
   if (state === 'playing') {
     ctx.fillStyle = '#fff'; ctx.font = `bold 150px ${FONT}`; ctx.fillText(score, 512, 210);
-    ctx.font = `44px ${FONT}`; ctx.fillStyle = '#9fd8ff'; ctx.fillText('SKOR', 512, 110);
+    ctx.font = `44px ${FONT}`; ctx.fillStyle = '#9fd8ff'; ctx.fillText(L('SKOR', 'SCORE'), 512, 110);
     ctx.fillStyle = remain <= 5 ? '#ff6677' : '#7dffa0'; ctx.font = `bold 80px ${FONT}`;
     ctx.fillText('⏱ ' + remain + ' s', 512, 370);
     ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(112, 440, 800, 24);
     ctx.fillStyle = remain <= 5 ? '#ff6677' : '#44ccff'; ctx.fillRect(112, 440, 800 * remain / DURATION, 24);
   } else {
     ctx.fillStyle = '#fff'; ctx.font = `bold 92px ${FONT}`;
-    ctx.fillText(state === 'over' ? 'Skor: ' + score : 'POP BOLA VR', 512, 140);
+    ctx.fillText(state === 'over' ? L('Skor: ', 'Score: ') + score : L('POP BOLA VR', 'BUBBLE POP VR'), 512, 140);
     ctx.font = `40px ${FONT}`;
-    if (state === 'over' && newRecord) { ctx.fillStyle = '#ffcc33'; ctx.fillText('★ REKOR BARU! ★', 512, 225); }
-    else { ctx.fillStyle = '#9fd8ff'; ctx.fillText('Rekor hari ini: ' + best, 512, 225); }
+    if (state === 'over' && newRecord) { ctx.fillStyle = '#ffcc33'; ctx.fillText(L('★ REKOR BARU! ★', '★ NEW RECORD! ★'), 512, 225); }
+    else { ctx.fillStyle = '#9fd8ff'; ctx.fillText(L('Rekor hari ini: ', 'Today\'s best: ') + best, 512, 225); }
     ctx.font = `36px ${FONT}`;
-    ctx.fillStyle = '#33ddff'; ctx.fillText('● Biru +1', 230, 310);
-    ctx.fillStyle = '#ffcc33'; ctx.fillText('◆ Emas +5', 512, 310);
-    ctx.fillStyle = '#ff5566'; ctx.fillText('✸ Merah −3', 800, 310);
+    ctx.fillStyle = '#33ddff'; ctx.fillText(L('● Biru +1', '● Blue +1'), 230, 310);
+    ctx.fillStyle = '#ffcc33'; ctx.fillText(L('◆ Emas +5', '◆ Gold +5'), 512, 310);
+    ctx.fillStyle = '#ff5566'; ctx.fillText(L('✸ Merah −3', '✸ Red −3'), 800, 310);
     ctx.fillStyle = '#fff'; ctx.font = `38px ${FONT}`;
-    ctx.fillText('Sentuh bola dengan tangan / controller', 512, 390);
-    ctx.fillStyle = '#7dffa0'; ctx.fillText('Sentuh tombol hijau untuk ' + (state === 'over' ? 'main lagi' : 'mulai'), 512, 450);
+    ctx.fillText(L('Sentuh bola dengan tangan / controller', 'Touch the bubbles with your hand / controller'), 512, 390);
+    ctx.fillStyle = '#7dffa0'; ctx.fillText(L('Sentuh tombol hijau untuk ', 'Touch the green button to ') + (state === 'over' ? L('main lagi', 'play again') : L('mulai', 'start')), 512, 450);
   }
   board.tex.needsUpdate = true;
 }
@@ -347,10 +350,10 @@ let xrKind = null;
 function applyEnv() { const ar = xrKind === 'ar'; env.visible = !ar; scene.background = ar ? null : BGC; scene.fog = ar ? null : FOG; }
 const ov = document.getElementById('ov'), msg = document.getElementById('msg'), btnAR = document.getElementById('btnAR'), btnVR = document.getElementById('btnVR');
 (async () => {
-  if (!navigator.xr) { msg.textContent = 'WebXR tidak tersedia. Mode tes laptop: klik bola hijau di layar.'; return; }
+  if (!navigator.xr) { msg.textContent = L('WebXR tidak tersedia. Mode tes laptop: klik bola hijau di layar.', 'WebXR not available. Laptop test mode: click the green ball on screen.'); return; }
   const [ar, vr] = await Promise.all([navigator.xr.isSessionSupported('immersive-ar').catch(() => false), navigator.xr.isSessionSupported('immersive-vr').catch(() => false)]);
   btnAR.disabled = !ar; btnVR.disabled = !vr;
-  msg.textContent = ar ? 'Siap! Mixed Reality memakai kamera passthrough Quest.' : vr ? 'Mixed Reality tidak tersedia, gunakan mode VR.' : 'Perangkat XR tidak terdeteksi. Mode tes laptop: klik bola hijau di layar.';
+  msg.textContent = ar ? L('Siap! Mixed Reality memakai kamera passthrough Quest.', 'Ready! Mixed Reality uses the Quest passthrough camera.') : vr ? L('Mixed Reality tidak tersedia, gunakan mode VR.', 'Mixed Reality not available, use VR mode.') : L('Perangkat XR tidak terdeteksi. Mode tes laptop: klik bola hijau di layar.', 'No XR device detected. Laptop test mode: click the green ball on screen.');
 })();
 async function startXR(kind) {
   initAudio();
@@ -359,7 +362,7 @@ async function startXR(kind) {
     xrKind = kind; applyEnv();
     s.addEventListener('end', () => { xrKind = null; applyEnv(); ov.classList.remove('hide'); });
     await renderer.xr.setSession(s); ov.classList.add('hide');
-  } catch (e) { msg.textContent = 'Gagal memulai: ' + e.message; xrKind = null; applyEnv(); }
+  } catch (e) { msg.textContent = L('Gagal memulai: ', 'Failed to start: ') + e.message; xrKind = null; applyEnv(); }
 }
 btnAR.onclick = () => startXR('ar'); btnVR.onclick = () => startXR('vr');
 </script>
