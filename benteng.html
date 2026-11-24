@@ -5,33 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Benteng 4 Penjuru · Multiplayer VR</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tema.css">
 <style>
-  :root{--line:rgba(255,255,255,.18)}
-  body{margin:0;background:#04060f;color:#fff;font-family:'Space Grotesk',system-ui,sans-serif;overflow:hidden}
-  canvas{display:block}
-  .nav{position:fixed;top:16px;left:16px;z-index:5;padding:10px 16px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid var(--line);
-    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:#fff;text-decoration:none;font-weight:600}
-  #net{position:fixed;top:16px;right:16px;z-index:5;padding:8px 14px;border-radius:99px;font-size:13px;background:rgba(255,255,255,.08);border:1px solid var(--line);backdrop-filter:blur(16px)}
-  #ov{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:5;width:min(600px,calc(100% - 32px));padding:24px 26px;border-radius:26px;
-    background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.04));border:1px solid var(--line);
-    backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);box-shadow:0 20px 60px rgba(0,0,0,.45)}
-  #ov.hide{display:none}
-  .tag{display:inline-block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:5px 10px;border-radius:99px;background:rgba(255,210,63,.14);border:1px solid rgba(255,210,63,.45);color:#ffe9a3}
-  #ov h1{margin:10px 0 6px;font-size:32px;line-height:1.1}
-  #ov p{margin:0 0 16px;color:#c9cfe6;line-height:1.5}
-  .row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
-  input{flex:1;min-width:140px;padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:#fff;font:600 17px 'Space Grotesk',system-ui}
-  #inCode{text-transform:uppercase;letter-spacing:.3em;max-width:160px}
-  .btn{flex:1;min-width:150px;padding:14px 16px;border-radius:14px;border:1px solid var(--line);font:600 16px 'Space Grotesk',system-ui;color:#fff;cursor:pointer;background:rgba(255,255,255,.08);transition:transform .15s}
-  .btn:hover{transform:translateY(-2px)}
-  .btn.primary{background:linear-gradient(135deg,#ffb020,#ff5adc);border:none;box-shadow:0 8px 28px rgba(255,120,120,.35)}
-  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
-  .code{font-size:15px;color:#c9cfe6}.code b{font-size:34px;letter-spacing:.25em;color:#fff;display:block;margin:2px 0 8px}
+  :root{--accent:#5dff8a;--a1:#3ee089;--a2:#00a8e8}
+  #inCode{text-transform:uppercase;letter-spacing:.3em;max-width:170px;flex:0 0 170px}
+  .code{font-size:15px;color:var(--muted)}.code b{font-size:38px;letter-spacing:.25em;color:#fff;display:block;margin:2px 0 10px;text-shadow:0 0 24px var(--accent)}
   #plist{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
-  .pl{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.2);font-size:14px}
-  .pl b{display:block;font-size:16px}
-  #msg{margin-top:10px;font-size:14px;color:#9aa3c7;min-height:18px}
+  .pl{padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:rgba(0,0,0,.22);font-size:13px;color:var(--muted)}
+  .pl b{display:block;font-size:16px;color:#fff}
   [hidden]{display:none!important}
 </style>
 <script type="importmap">
@@ -40,21 +22,25 @@
 </head>
 <body>
 <script src="loader.js"></script>
-<a class="nav" href="./">← Menu</a>
-<div id="net">● menyambung…</div>
+<script src="tema.js" defer></script>
+<div class="xr-aura" aria-hidden="true"><i></i><i></i><i></i></div>
+<header class="xr-top">
+  <div class="xr-left"><a class="xr-back" href="./">← Menu</a>
+    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span>Benteng 4 Penjuru</span></div></div></div>
+  <div class="xr-pill" id="net">menyambung…</div>
+</header>
 <div id="ov">
-  <span class="tag">Multiplayer · Co-op · 1–4 pemain</span>
-  <h1>Benteng 4 Penjuru</h1>
+  <div class="xr-head"><div class="xr-icon">🏰</div><div><div class="tags"><span class="tag hot">Multiplayer</span><span class="tag">Co-op</span><span class="tag">1–4 pemain</span></div><h1>Benteng 4 Penjuru</h1></div></div>
   <p>Empat penjaga berdiri saling membelakangi di puncak menara. Alien datang dari segala arah. Lindungi Kristal Inti, lalu kalahkan kapal induk dengan menembak <b>bersama-sama</b>!</p>
   <div id="stepJoin">
     <div class="row"><input id="inName" maxlength="12" placeholder="Nama kamu"></div>
-    <div class="row"><button class="btn primary" id="btnCreate">Buat ruangan baru</button></div>
+    <div class="row"><button class="btn primary" id="btnCreate">Buat ruangan baru <span class="arw">→</span></button></div>
     <div class="row"><input id="inCode" maxlength="4" placeholder="KODE"><button class="btn" id="btnJoin">Gabung ruangan</button></div>
   </div>
   <div id="stepLobby" hidden>
     <div class="code">Kode ruangan (bagikan ke pemain lain):<b id="codeOut">----</b></div>
     <div id="plist"></div>
-    <div class="row"><button class="btn primary" id="btnVR" disabled>Masuk VR</button><button class="btn" id="btnAR" disabled>Mixed Reality</button></div>
+    <div class="row"><button class="btn primary" id="btnVR" disabled>Masuk VR <span class="arw">→</span></button><button class="btn" id="btnAR" disabled>Mixed Reality</button></div>
   </div>
   <div id="msg"></div>
 </div>
@@ -98,7 +84,7 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 await Promise.race([document.fonts.load("700 40px 'Space Grotesk'"), new Promise(r => setTimeout(r, 1500))]).catch(() => {});
 const $ = id => document.getElementById(id);
 const netEl = $('net');
-function setNet(ok, label) { netEl.textContent = (ok ? '● ' : '○ ') + label; netEl.style.color = ok ? '#7dffc0' : '#ff9aa8'; }
+function setNet(ok, label) { netEl.textContent = label; netEl.className = 'xr-pill ' + (ok ? 'ok' : 'err'); }
 
 // =================== JARINGAN ===================
 // Dua jalur dengan antarmuka sama: Firebase (antar-headset) atau lokal (antar-tab).
@@ -171,6 +157,7 @@ renderer.xr.enabled = true;
 renderer.xr.setReferenceSpaceType('local-floor');
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
+import('./logo3d.js').then(m => m.pasangLogo3D(renderer, scene)).catch(e => console.warn('logo3d', e));
 const BG = new THREE.Color(0x04060f); scene.background = BG.clone(); scene.fog = new THREE.Fog(0x04060f, 25, 70);
 const FOG = scene.fog;
 const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.03, 300);

@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pop Bola VR</title>
+<link rel="stylesheet" href="tema.css">
 <style>
-  body{margin:0;background:#0b1020;color:#fff;font-family:system-ui,sans-serif;overflow:hidden}
-  #info{position:absolute;top:12px;left:12px;right:12px;font-size:14px;line-height:1.4;opacity:.85;pointer-events:none}
+  :root{--accent:#33ddff;--a1:#33ddff;--a2:#2a6df4}
 </style>
 <script type="importmap">
 { "imports": {
@@ -15,46 +15,21 @@
 } }
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{--a1:#33ddff;--a2:#2a6df4;--a3:rgba(51,221,255,.4)}
-  body{font-family:'Space Grotesk',system-ui,sans-serif!important}
-  .nav{position:fixed;top:16px;left:16px;z-index:5;padding:10px 16px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);
-    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:#fff;text-decoration:none;font-weight:600}
-  #info{top:auto!important;left:50%!important;right:auto!important;bottom:96px;transform:translateX(-50%);width:min(560px,calc(100% - 32px));
-    padding:20px 24px;border-radius:24px;opacity:1!important;font-size:15px!important;color:#d6dbf2;
-    background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.18);
-    backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);box-shadow:0 20px 60px rgba(0,0,0,.45)}
-  #info b:first-child{display:block;font-size:26px;color:#fff;margin-bottom:6px}
-  #VRButton{bottom:24px!important;padding:16px 28px!important;border-radius:16px!important;border:none!important;
-    font:700 16px 'Space Grotesk',system-ui,sans-serif!important;letter-spacing:.06em;opacity:1!important;
-    background:linear-gradient(135deg,var(--a1),var(--a2))!important;box-shadow:0 10px 32px var(--a3)!important;width:auto!important;min-width:200px;
-    left:50%!important;transform:translateX(-50%)}
-  #VRButton[disabled],#VRButton:disabled{background:rgba(255,255,255,.1)!important;box-shadow:none!important;color:#aab!important}
-
-  #ov{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:5;width:min(560px,calc(100% - 32px));padding:26px 28px;border-radius:26px;
-    background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.18);color:#fff;
-    backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);box-shadow:0 20px 60px rgba(0,0,0,.45)}
-  #ov.hide{display:none}
-  #ov .tag{display:inline-block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:5px 10px;border-radius:99px;background:rgba(51,221,255,.15);border:1px solid rgba(51,221,255,.45);color:#aef3ff}
-  #ov h1{margin:12px 0 6px;font-size:34px;line-height:1.1}
-  #ov p{margin:0 0 18px;color:#c9cfe6;line-height:1.5}
-  .btns{display:flex;gap:12px;flex-wrap:wrap}
-  .btn{flex:1;min-width:200px;padding:16px 18px;border-radius:16px;border:1px solid rgba(255,255,255,.18);font:600 17px 'Space Grotesk',system-ui;color:#fff;cursor:pointer;background:rgba(255,255,255,.08);transition:transform .15s}
-  .btn:hover{transform:translateY(-2px)}
-  .btn.primary{background:linear-gradient(135deg,#33ddff,#2a6df4);border:none;box-shadow:0 8px 28px rgba(51,221,255,.4)}
-  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
-  #msg{margin-top:12px;font-size:14px;color:#9aa3c7}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <script src="loader.js"></script>
-<a class="nav" href="./">← Menu</a>
+<script src="tema.js" defer></script>
+<div class="xr-aura" aria-hidden="true"><i></i><i></i><i></i></div>
+<header class="xr-top">
+  <div class="xr-left"><a class="xr-back" href="./">← Menu</a>
+    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span>Pop Bola</span></div></div></div>
+  <div class="xr-pill" id="xrStatus">Memeriksa perangkat…</div>
+</header>
 <div id="ov">
-  <span class="tag">Pemula · Kini dengan Mixed Reality</span>
-  <h1>Pop Bola</h1>
+  <div class="xr-head"><div class="xr-icon">🎈</div><div><div class="tags"><span class="tag hot">Pemula</span><span class="tag">Hand tracking</span><span class="tag">Mixed Reality</span></div><h1>Pop Bola</h1></div></div>
   <p>Bola bermunculan di sekitarmu. Pecahkan dengan ujung jari atau controller. Biru +1, emas +5, merah −3. Mode Mixed Reality membuat bola muncul di ruangan nyatamu!</p>
-  <div class="btns"><button class="btn primary" id="btnAR" disabled>Mulai Mixed Reality</button><button class="btn" id="btnVR" disabled>Mulai VR</button></div>
+  <div class="btns"><button class="btn primary" id="btnAR" disabled>Mulai Mixed Reality <span class="arw">→</span></button><button class="btn" id="btnVR" disabled>Mulai VR</button></div>
   <div id="msg">Memeriksa perangkat…</div>
 </div>
 <script type="module">
@@ -104,6 +79,7 @@ renderer.xr.setReferenceSpaceType('local-floor');
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
+import('./logo3d.js').then(m => m.pasangLogo3D(renderer, scene)).catch(e => console.warn('logo3d', e));
 scene.background = new THREE.Color(0x0b1020);
 scene.fog = new THREE.Fog(0x0b1020, 6, 22);
 const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.03, 60);

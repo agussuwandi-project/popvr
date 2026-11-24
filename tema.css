@@ -1,0 +1,93 @@
+/* Tema bersama UVERS XR Lab: dipakai semua halaman game supaya senada dengan menu.
+   Tiap halaman cukup mengatur --accent, --a1, --a2 di :root. */
+:root{
+  --bg:#05060f; --ink:#f4f6ff; --muted:#a9b1d6;
+  --glass:rgba(255,255,255,.07); --line:rgba(255,255,255,.16);
+  --accent:#ff3fa4; --a1:#ff3fa4; --a2:#7b5cff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Space Grotesk',system-ui,sans-serif;overflow:hidden}
+canvas{display:block}
+b{font-weight:700}
+
+/* cahaya aurora tipis di tepi layar, di atas scene 3D tapi tidak menutupi tengah */
+.xr-aura{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden}
+.xr-aura i{position:absolute;width:55vmax;height:55vmax;border-radius:50%;filter:blur(90px);opacity:.30;mix-blend-mode:screen;animation:xrFloat 22s ease-in-out infinite}
+.xr-aura i:nth-child(1){background:var(--a1);top:-32vmax;left:-24vmax}
+.xr-aura i:nth-child(2){background:var(--a2);bottom:-34vmax;right:-22vmax;animation-delay:-8s}
+.xr-aura i:nth-child(3){background:#00c8ff;top:-36vmax;right:-30vmax;opacity:.16;animation-delay:-14s}
+.xr-aura::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,transparent 55%,rgba(5,6,15,.55) 100%)}
+@keyframes xrFloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(5vmax,3vmax) scale(1.08)}66%{transform:translate(-3vmax,5vmax) scale(.95)}}
+
+/* kepala halaman: sama dengan menu */
+.xr-top{position:fixed;top:0;left:0;right:0;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 22px;pointer-events:none}
+.xr-top > *{pointer-events:auto}
+.xr-left{display:flex;align-items:center;gap:12px}
+.xr-back{display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:14px;color:#fff;text-decoration:none;font-weight:600;font-size:15px;
+  background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:transform .2s,background .2s}
+.xr-back:hover,.xr-back:focus-visible{transform:translateX(-3px);background:rgba(255,255,255,.13)}
+.xr-brand{display:flex;align-items:center;gap:12px}
+.xr-logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-weight:700;font-size:17px;
+  background:linear-gradient(135deg,#ff3fa4,#7b5cff);box-shadow:0 8px 26px rgba(123,92,255,.5)}
+.xr-brand b{display:block;font-size:17px;line-height:1.2}
+.xr-brand span{font-size:13px;color:var(--muted)}
+.xr-pill{padding:9px 15px;border-radius:99px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;white-space:nowrap}
+.xr-pill::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--dot,#ffcf5a);box-shadow:0 0 12px var(--dot,#ffcf5a)}
+.xr-pill.ok{--dot:#3dffa8}.xr-pill.err{--dot:#ff5a7a}
+
+/* kartu kaca utama (sama seperti kartu di menu) */
+#ov{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:5;width:min(600px,calc(100% - 32px));padding:26px 28px;border-radius:28px;
+  background:linear-gradient(145deg,rgba(255,255,255,.13),rgba(255,255,255,.035));border:1px solid var(--line);
+  backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%);
+  box-shadow:0 24px 60px rgba(0,0,0,.4),0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent),0 0 70px -20px var(--accent),inset 0 1px 0 rgba(255,255,255,.18);
+  animation:xrRise .6s cubic-bezier(.2,.8,.2,1) both}
+#ov::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(520px circle at 0% 0%,var(--accent),transparent 46%);opacity:.2}
+#ov > *{position:relative}
+#ov.hide{display:none}
+@keyframes xrRise{from{opacity:0;transform:translate(-50%,24px)}to{opacity:1;transform:translate(-50%,0)}}
+.xr-head{display:flex;align-items:center;gap:16px;margin-bottom:12px}
+.xr-icon{flex:none;width:58px;height:58px;border-radius:18px;display:grid;place-items:center;font-size:30px;
+  background:rgba(255,255,255,.08);border:1px solid var(--line);box-shadow:0 0 30px -6px var(--accent)}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.tag{display:inline-block;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;padding:5px 10px;border-radius:99px;
+  background:rgba(255,255,255,.07);border:1px solid var(--line);color:#d9def5}
+.tag.hot{background:color-mix(in srgb,var(--accent) 18%,transparent);border-color:color-mix(in srgb,var(--accent) 55%,transparent);color:#fff}
+#ov h1{margin:0;font-size:32px;line-height:1.08;letter-spacing:-.01em}
+#ov p{margin:0 0 18px;color:var(--muted);line-height:1.55;font-size:16px}
+#ov p b{color:#e6e9ff}
+.btns,.row{display:flex;gap:12px;flex-wrap:wrap}
+.row{margin-top:10px}
+.btn{flex:1;min-width:170px;display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:16px 18px;border-radius:16px;
+  border:1px solid var(--line);font:600 17px 'Space Grotesk',system-ui,sans-serif;color:#fff;cursor:pointer;background:rgba(255,255,255,.08);
+  transition:transform .2s,background .2s,box-shadow .2s}
+.btn:hover:not(:disabled){transform:translateY(-2px);background:rgba(255,255,255,.14)}
+.btn.primary{background:linear-gradient(135deg,var(--a1),var(--a2));border:none;font-weight:700;box-shadow:0 12px 36px -6px color-mix(in srgb,var(--a2) 70%,transparent)}
+.btn.primary:hover:not(:disabled){transform:translateY(-3px) scale(1.01);background:linear-gradient(135deg,var(--a1),var(--a2))}
+.btn:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
+.btn .arw{transition:transform .2s}.btn:hover:not(:disabled) .arw{transform:translateX(5px)}
+#msg{margin-top:14px;font-size:14px;color:#9aa3c7;min-height:18px;line-height:1.45}
+input{flex:1;min-width:140px;padding:15px 16px;border-radius:14px;border:1px solid var(--line);background:rgba(0,0,0,.28);color:#fff;font:600 17px 'Space Grotesk',system-ui,sans-serif;outline:none;transition:border-color .2s,box-shadow .2s}
+input:focus{border-color:color-mix(in srgb,var(--accent) 70%,white);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}
+input::placeholder{color:#7d84a8}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+@media (max-width:640px){
+  .xr-brand div:last-child{display:none}
+  .xr-pill{display:none}
+  #ov{padding:22px 20px;bottom:14px}
+  #ov h1{font-size:26px}
+}
+@media (prefers-reduced-motion:reduce){.xr-aura i,#ov{animation:none!important}}
+
+/* tombol kecilkan kartu (berguna di mode tes laptop agar scene bisa diklik) */
+.xr-min{position:absolute!important;top:14px;right:14px;width:34px;height:34px;border-radius:11px;border:1px solid var(--line);background:rgba(255,255,255,.08);
+  color:#fff;font:700 18px/1 'Space Grotesk',system-ui,sans-serif;cursor:pointer;display:grid;place-items:center;transition:background .2s}
+.xr-min:hover{background:rgba(255,255,255,.16)}
+#ov.mini{width:auto;max-width:calc(100% - 32px);padding:12px 60px 12px 14px;border-radius:20px}
+#ov.mini > :not(.xr-head):not(.xr-min){display:none!important}
+#ov.mini .xr-head{margin:0}
+#ov.mini .tags{display:none}
+#ov.mini h1{font-size:20px}
+#ov.mini .xr-icon{width:40px;height:40px;font-size:22px;border-radius:13px}
+#ov.mini .xr-min{top:50%;transform:translateY(-50%)}

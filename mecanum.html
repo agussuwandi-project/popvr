@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Robot Mecanum VR</title>
+<link rel="stylesheet" href="tema.css">
 <style>
-  body{margin:0;background:#0d1420;color:#fff;font-family:system-ui,sans-serif;overflow:hidden}
-  #info{position:absolute;top:12px;left:12px;right:12px;font-size:14px;line-height:1.4;opacity:.85;pointer-events:none}
+  :root{--accent:#ffb020;--a1:#ffb020;--a2:#ff6a3d}
 </style>
 <script type="importmap">
 { "imports": {
@@ -15,32 +15,25 @@
 } }
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{--a1:#ffb020;--a2:#ff6a3d;--a3:rgba(255,176,32,.4)}
-  body{font-family:'Space Grotesk',system-ui,sans-serif!important}
-  .nav{position:fixed;top:16px;left:16px;z-index:5;padding:10px 16px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);
-    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:#fff;text-decoration:none;font-weight:600}
-  #info{top:auto!important;left:50%!important;right:auto!important;bottom:96px;transform:translateX(-50%);width:min(560px,calc(100% - 32px));
-    padding:20px 24px;border-radius:24px;opacity:1!important;font-size:15px!important;color:#d6dbf2;
-    background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.18);
-    backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);box-shadow:0 20px 60px rgba(0,0,0,.45)}
-  #info b:first-child{display:block;font-size:26px;color:#fff;margin-bottom:6px}
-  #VRButton{bottom:24px!important;padding:16px 28px!important;border-radius:16px!important;border:none!important;
-    font:700 16px 'Space Grotesk',system-ui,sans-serif!important;letter-spacing:.06em;opacity:1!important;
-    background:linear-gradient(135deg,var(--a1),var(--a2))!important;box-shadow:0 10px 32px var(--a3)!important;width:auto!important;min-width:200px;
-    left:50%!important;transform:translateX(-50%)}
-  #VRButton[disabled],#VRButton:disabled{background:rgba(255,255,255,.1)!important;box-shadow:none!important;color:#aab!important}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <script src="loader.js"></script>
-<a class="nav" href="./">← Menu</a>
-<div id="info"><b>Robot Mecanum VR</b>Buka di Quest Browser lalu tekan <b>ENTER VR</b>.<br>
-Di laptop: klik tombol panel untuk menggerakkan robot (mode tes).</div>
+<script src="tema.js" defer></script>
+<div class="xr-aura" aria-hidden="true"><i></i><i></i><i></i></div>
+<header class="xr-top">
+  <div class="xr-left"><a class="xr-back" href="./">← Menu</a>
+    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span>Robot Mecanum</span></div></div></div>
+  <div class="xr-pill" id="xrStatus">Memeriksa perangkat…</div>
+</header>
+<div id="ov">
+  <div class="xr-head"><div class="xr-icon">🤖</div><div><div class="tags"><span class="tag hot">Simulasi</span><span class="tag">Robotika</span><span class="tag">Kinematika</span></div><h1>Robot Mecanum</h1></div></div>
+  <p>Kendalikan robot holonomic yang bisa bergeser ke samping. Lihat gaya di tiap roda dan rumus kinematikanya secara langsung.</p>
+  <div class="btns"><button class="btn primary" id="btnVR" disabled>Masuk VR <span class="arw">→</span></button></div>
+  <div id="msg">Memeriksa perangkat…</div>
+</div>
 <script type="module">
 import * as THREE from 'three';
-import { VRButton } from 'three/addons/webxr/VRButton.js';
 
 // ====== PENGATURAN (silakan ubah) ======
 const HEADER = 'UVERS · Prodi TIF · ME · IE';
@@ -84,9 +77,27 @@ renderer.xr.enabled = true;
 renderer.xr.setReferenceSpaceType('local-floor');
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
-document.body.appendChild(VRButton.createButton(renderer));
+// ---- tombol Masuk VR (menggantikan VRButton bawaan agar senada dengan tema)
+{
+  const ov = document.getElementById('ov'), msg = document.getElementById('msg'), btnVR = document.getElementById('btnVR');
+  const laptop = 'Mode tes laptop: klik tombol di panel untuk menggerakkan robot.';
+  (async () => {
+    if (!navigator.xr) { msg.textContent = 'WebXR tidak tersedia. ' + laptop; return; }
+    const ok = await navigator.xr.isSessionSupported('immersive-vr').catch(() => false);
+    btnVR.disabled = !ok;
+    msg.textContent = ok ? 'Siap! Tekan Masuk VR, lalu pakai headset.' : 'Headset tidak terdeteksi. ' + laptop;
+  })();
+  btnVR.onclick = async () => {
+    try {
+      const s = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] });
+      s.addEventListener('end', () => ov.classList.remove('hide'));
+      await renderer.xr.setSession(s); ov.classList.add('hide');
+    } catch (e) { msg.textContent = 'Gagal memulai: ' + e.message; }
+  };
+}
 
 const scene = new THREE.Scene();
+import('./logo3d.js').then(m => m.pasangLogo3D(renderer, scene)).catch(e => console.warn('logo3d', e));
 scene.background = new THREE.Color(0x0d1420);
 scene.fog = new THREE.Fog(0x0d1420, 10, 30);
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.03, 100);

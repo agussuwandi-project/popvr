@@ -5,27 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Invasi Portal MR</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tema.css">
 <style>
-  :root{--glass:rgba(255,255,255,.08);--line:rgba(255,255,255,.18)}
-  body{margin:0;background:#04050c;color:#fff;font-family:'Space Grotesk',system-ui,sans-serif;overflow:hidden}
-  canvas{display:block}
-  .nav{position:fixed;top:16px;left:16px;z-index:5;padding:10px 16px;border-radius:14px;background:var(--glass);border:1px solid var(--line);
-    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:#fff;text-decoration:none;font-weight:600}
-  #ov{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:5;width:min(560px,calc(100% - 32px));padding:26px 28px;border-radius:26px;
-    background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.04));border:1px solid var(--line);
-    backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);box-shadow:0 20px 60px rgba(0,0,0,.45)}
-  #ov.hide{display:none}
-  #ov .tag{display:inline-block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:5px 10px;border-radius:99px;background:rgba(255,80,200,.18);border:1px solid rgba(255,120,220,.4);color:#ffb3ec}
-  #ov h1{margin:12px 0 6px;font-size:34px;line-height:1.1}
-  #ov p{margin:0 0 18px;color:#c9cfe6;line-height:1.5}
-  .btns{display:flex;gap:12px;flex-wrap:wrap}
-  .btn{flex:1;min-width:200px;padding:16px 18px;border-radius:16px;border:1px solid var(--line);font:600 17px 'Space Grotesk',system-ui;color:#fff;cursor:pointer;
-    background:rgba(255,255,255,.08);transition:transform .15s,background .15s}
-  .btn:hover{transform:translateY(-2px);background:rgba(255,255,255,.14)}
-  .btn.primary{background:linear-gradient(135deg,#ff3fa4,#7b5cff);border:none;box-shadow:0 8px 28px rgba(160,80,255,.45)}
-  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
-  #msg{margin-top:12px;font-size:14px;color:#9aa3c7}
+  :root{--accent:#ff3fa4;--a1:#ff3fa4;--a2:#7b5cff}
 </style>
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
@@ -33,13 +16,18 @@
 </head>
 <body>
 <script src="loader.js"></script>
-<a class="nav" href="./">← Menu</a>
+<script src="tema.js" defer></script>
+<div class="xr-aura" aria-hidden="true"><i></i><i></i><i></i></div>
+<header class="xr-top">
+  <div class="xr-left"><a class="xr-back" href="./">← Menu</a>
+    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span>Invasi Portal</span></div></div></div>
+  <div class="xr-pill" id="xrStatus">Memeriksa perangkat…</div>
+</header>
 <div id="ov">
-  <span class="tag">Mixed Reality · Baru</span>
-  <h1>Invasi Portal</h1>
+  <div class="xr-head"><div class="xr-icon">🛸</div><div><div class="tags"><span class="tag hot">Baru · Mixed Reality</span><span class="tag">Gelombang kejut</span><span class="tag">Boss</span></div><h1>Invasi Portal</h1></div></div>
   <p>Portal alien terbuka di ruangan nyatamu. Tembak musuh, tutup portalnya, dan kalahkan kapal induk di detik terakhir. Lihat sekeliling, karena mereka bisa datang dari belakang!</p>
   <div class="btns">
-    <button class="btn primary" id="btnAR" disabled>Mulai Mixed Reality</button>
+    <button class="btn primary" id="btnAR" disabled>Mulai Mixed Reality <span class="arw">→</span></button>
     <button class="btn" id="btnVR" disabled>Mulai VR</button>
   </div>
   <div id="msg">Memeriksa perangkat…</div>
@@ -68,6 +56,7 @@ renderer.xr.setReferenceSpaceType('local-floor');
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
+import('./logo3d.js').then(m => m.pasangLogo3D(renderer, scene)).catch(e => console.warn('logo3d', e));
 const BG = new THREE.Color(0x04050c);
 scene.background = BG.clone();
 const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.03, 200);
