@@ -10,8 +10,7 @@
 <meta name="title-en" content="Four-Corner Fort">
 <meta name="description-en" content="Four-Corner Fort: a co-op multiplayer VR game for 1-4 players.">
 <script src="i18n.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="tema.css">
 <style>
   :root{--accent:#5dff8a;--a1:#3ee089;--a2:#00a8e8}
@@ -52,6 +51,8 @@
 </div>
 <script type="module">
 import * as THREE from 'three';
+import { buatMusuh, buatBos, Ledakan, pakaiPantulan } from './alien.js';
+import { lingkungan } from './detail.js';
 
 // ====== PENGATURAN (silakan ubah) ======
 // Tempel konfigurasi web dari Firebase Console di sini. Selama apiKey masih
@@ -237,16 +238,8 @@ function beam(from, to, color) {
   l.userData = { t: 0, life: .15 }; scene.add(l); fx.push(l);
 }
 const pGeo = new THREE.BoxGeometry(1, 1, 1);
-function explode(pos, color, n = 22, size = .06, spd = 3.5) {
-  const mat = new THREE.MeshBasicMaterial({ color, transparent: true });
-  for (let i = 0; i < n; i++) {
-    const p = new THREE.Mesh(pGeo, mat); p.position.copy(pos); p.scale.setScalar(size * R.randFloat(.5, 1.3));
-    p.userData = { v: new THREE.Vector3().randomDirection().multiplyScalar(R.randFloat(.3, 1) * spd), t: 0, life: R.randFloat(.5, .9), phys: true };
-    scene.add(p); fx.push(p);
-  }
-  const f = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .9, blending: THREE.AdditiveBlending }));
-  f.position.copy(pos); f.scale.setScalar(.12); f.userData = { t: 0, life: .25, grow: 1.1 }; scene.add(f); fx.push(f);
-}
+const FX = new Ledakan(scene);
+function explode(pos, color, n = 22, size = .06, spd = 3.5) { FX.meledak(pos, color, n, size, spd); }
 function popup(pos, text, color = '#fff', size = .6) {
   const c = document.createElement('canvas'); c.width = 512; c.height = 128; const x = c.getContext('2d');
   x.font = `700 80px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineWidth = 10; x.strokeStyle = 'rgba(0,0,0,.6)';
@@ -351,19 +344,7 @@ function updateAvatars(dt) {
 // =================== MUSUH ===================
 function emi(color, extra = {}) { return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: .55, roughness: .35, metalness: .3, ...extra }); }
 function makeEnemyMesh(type) {
-  const g = new THREE.Group(), s = .7;
-  if (type === 'drone') {
-    g.add(new THREE.Mesh(new THREE.OctahedronGeometry(.25 * s, 0), emi(0xff33cc, { flatShading: true })));
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(.38 * s, .025, 8, 32), emi(0x33e0ff)); g.add(ring); g.userData.spin = ring;
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(.06 * s, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffaa })); eye.position.z = .15; g.add(eye);
-  } else if (type === 'fast') {
-    const b = new THREE.Mesh(new THREE.ConeGeometry(.15 * s, .55 * s, 6), emi(0x55ff66, { flatShading: true })); b.rotation.x = Math.PI / 2; g.add(b);
-    for (const k of [-1, 1]) { const w = new THREE.Mesh(new THREE.BoxGeometry(.4 * s, .015, .16 * s), emi(0x22aa44)); w.position.set(k * .12, 0, -.05); g.add(w); }
-  } else {
-    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(.42 * s, 0), emi(0xff8833, { flatShading: true })); g.add(b); g.userData.spin = b;
-    for (let i = 0; i < 8; i++) { const sp = new THREE.Mesh(new THREE.ConeGeometry(.05, .16, 6), emi(0xffdd55));
-      const d = new THREE.Vector3().randomDirection(); sp.position.copy(d).multiplyScalar(.3); sp.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d); g.add(sp); }
-  }
+  const g = buatMusuh(type, { skala: .7 });
   const hb = new THREE.Mesh(new THREE.SphereGeometry(ENEMY[type].r, 10, 8), new THREE.MeshBasicMaterial({ visible: false })); g.add(hb);
   g.userData.hb = hb; return g;
 }
@@ -391,13 +372,9 @@ function syncEnemies() {
 
 // =================== BOSS ===================
 const boss = new THREE.Group(); boss.position.set(0, BOSS_Y, 0); boss.visible = false; scene.add(boss);
-const bossHull = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.4, .5, 12), emi(0x5a2d9c, { metalness: .8, roughness: .25, emissiveIntensity: .25, flatShading: true }));
-const bossDome = new THREE.Mesh(new THREE.SphereGeometry(.9, 24, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), emi(0xff3fa4)); bossDome.position.y = -.2;
-const bossCore = new THREE.Mesh(new THREE.SphereGeometry(.45, 20, 14), new THREE.MeshBasicMaterial({ color: 0xff2255 })); bossCore.position.y = -.75;
+const BOS = buatBos({ lampu: SEATS.map(s => s.color) }), bossHull = BOS.hull, bossDome = BOS.dome, bossCore = BOS.core;
 const shield = new THREE.Mesh(new THREE.SphereGeometry(2.7, 32, 20), new THREE.MeshBasicMaterial({ color: 0x66ccff, transparent: true, opacity: .18, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false }));
-boss.add(bossHull, bossDome, bossCore, shield);
-for (let i = 0; i < 16; i++) { const l = new THREE.Mesh(new THREE.SphereGeometry(.08, 8, 6), new THREE.MeshBasicMaterial({ color: SEATS[i % 4].color }));
-  const a = i / 16 * Math.PI * 2; l.position.set(Math.cos(a) * 2.2, -.05, Math.sin(a) * 2.2); bossHull.add(l); }
+boss.add(BOS.grup, shield);
 const bossHit = new THREE.Mesh(new THREE.SphereGeometry(2.7, 12, 8), new THREE.MeshBasicMaterial({ visible: false })); bossHit.userData = { kind: 'boss' }; boss.add(bossHit);
 let bossFlash = 0;
 
@@ -541,12 +518,13 @@ function onHits() {
   }
   upd['game/team'] = team; upd['game/sc'] = sc; if (bossUpd) upd['game/boss'] = bossUpd;
   net.update(base(), upd);
-  if (win) endRound(true);
+  if (win) endRound(true, team);
 }
 const seenHits = new Set();
-function endRound(win) {
+function endRound(win, skorAkhir) {
   if (game.st !== 'play') return;
   net.update(base(), { 'game/st': 'over', 'game/win': win, en: null, hits: null });
+  window.uversSkor?.('benteng', skorAkhir ?? (game.team || 0), (win ? '★ ' : '') + present().length + 'P'); // hanya host yang memanggil endRound
 }
 
 // =================== SENJATA ===================
@@ -648,6 +626,8 @@ setInterval(() => {
   if (SLOT >= 0) publishSelf();
   hostTick();
 }, 250);
+import('./xrkit.js').then(m => m.pasang(renderer, scene, camera, { game: 'benteng', idle: 0, tutorial: [["Jaga arah depanmu, tembak alien yang mendekat", "Guard your side, shoot the approaching aliens"], ["Lindungi Kristal di tengah menara", "Protect the Crystal in the middle of the tower"], ["Saat kapal induk datang, tembak ke atas BERSAMA", "When the mothership arrives, shoot UP together"]] })).catch(e => console.warn('xrkit', e));
+pakaiPantulan(lingkungan(renderer, scene));
 renderer.setAnimationLoop(() => {
   lastFrame = performance.now();
   const dt = Math.min(clock.getDelta(), .05); now += dt; const t = net.now();
@@ -678,6 +658,7 @@ renderer.setAnimationLoop(() => {
   if (startT.visible) { startT.rotation.z += dt * .8; }
   if (startT.visible) startT.lookAt(rig.position.clone().setY(1.6)); if (exitT.visible) exitT.lookAt(rig.position.clone().setY(1.6));
   // efek
+  FX.update(dt);
   for (let i = fx.length - 1; i >= 0; i--) {
     const f = fx[i], u = f.userData; u.t += dt; const k = u.t / u.life;
     if (u.phys) { u.v.multiplyScalar(1 - 1.5 * dt); f.position.addScaledVector(u.v, dt); f.rotation.x += 5 * dt; }

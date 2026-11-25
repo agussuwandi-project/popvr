@@ -97,14 +97,14 @@
   var st = el.querySelector('.uv-st');
   var name = (document.title.split('·')[0] || '').trim();
   st.textContent = L('Menyiapkan ', 'Preparing ') + name + '…';
-  var t0 = performance.now(), minMs = 2600, closed = false;
+  var t0 = performance.now(), minMs = 4000, closed = false; // durasi minimum layar loading (ms)
   setTimeout(function () { if (!closed) { el.className = 'loop'; st.textContent = L('Memuat ', 'Loading ') + name + '…'; } }, 2250);
   function close() {
     if (closed) return; closed = true;
     st.textContent = L('Siap', 'Ready');
     el.className = 'done';
-    setTimeout(function () { el.classList.add('gone'); }, reduce ? 0 : 450);
-    setTimeout(function () { el.remove(); s.remove(); }, 1100);
+    setTimeout(function () { el.classList.add('gone'); }, reduce ? 0 : 700);
+    setTimeout(function () { el.remove(); s.remove(); }, 1400);
   }
   function tryClose() { var w = minMs - (performance.now() - t0); w > 0 ? setTimeout(close, w) : close(); }
   if (document.readyState === 'complete') tryClose(); else window.addEventListener('load', tryClose);

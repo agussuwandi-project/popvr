@@ -17,8 +17,7 @@
 <script type="importmap">
 { "imports": { "three": "./three.module.min.js" } }
 </script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
 </head>
 <body>
 <script src="loader.js"></script>
@@ -37,6 +36,7 @@
 </div>
 <script type="module">
 import * as THREE from 'three';
+import { lingkungan, Mat, kotakTumpul, baut, cincin, gabungMesh } from './detail.js';
 
 // ====== PENGATURAN (silakan ubah) ======
 const HEADER = 'UVERS · Prodi TIF · ME · IE';
@@ -168,27 +168,57 @@ info.mesh.position.set(0.92, 1.38, -0.78); info.mesh.lookAt(0, 1.45, 0.1); scene
 
 // ---------- Lengan (hierarki: dasar → bahu → siku → pergelangan → capit) ----------
 const SC = [0xff3fa4, 0xffb020, 0x33ddff, 0x7dffa0];  // warna tiap servo (sama dengan panel)
-const matArm = new THREE.MeshStandardMaterial({ color: 0xe9e6f5, metalness: .25, roughness: .35 });
-const matDark = new THREE.MeshStandardMaterial({ color: 0x24212f, metalness: .4, roughness: .5 });
-function servoBox(color) { // badan servo RDS3225 sederhana
-  const g = new THREE.Group();
-  const b = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.042, 0.022), matDark); b.castShadow = true; g.add(b);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.003, 8, 28), new THREE.MeshBasicMaterial({ color })); ring.rotation.y = Math.PI / 2; ring.position.x = 0.022; g.add(ring);
+// material: bracket aluminium sikat, servo hitam, pad karet, capit ungu anodize (detail.js)
+const matArm = Mat.aluminium(0xd9dde6, .32), matDark = Mat.plastik(0x1e1c26, .45), matKrom = Mat.krom(), matKaret = Mat.karet(0x141416);
+const matLabel = Mat.stiker(['RDS3225', '25 kg·cm'], '#1e1c26', '#ff3fa4'), matJari = Mat.anodized(0xa066ff);
+function susun(induk, daftar = []) { // pembantu: tambah mesh ke induk + catat untuk digabung
+  return { add(geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); geo.computeBoundingSphere(); m.castShadow = geo.boundingSphere.radius > 0.012; induk.add(m); daftar.push(m); return m; },
+    gabung() { return gabungMesh(daftar, induk); } };
+}
+function servoBox(color) { // badan servo gaya RDS3225: casing tumpul, flens dudukan + baut, label, horn aluminium (sumbu output = +x)
+  const g = new THREE.Group(), s = susun(g);
+  s.add(kotakTumpul(0.04, 0.042, 0.022, 0.003), matDark);
+  s.add(kotakTumpul(0.034, 0.058, 0.004, 0.0015, 2), matDark, -0.004, 0, 0);
+  for (const y of [-1, 1]) for (const z of [-1, 1]) s.add(baut(0.0018, 0.003), matKrom, -0.004 + z * 0.01, y * 0.025, 0.0028, Math.PI / 2);
+  s.add(new THREE.BoxGeometry(0.03, 0.026, 0.0006), matLabel, -0.002, 0, 0.0113);
+  s.add(cincin(0.012, 0.003, 0.003, 32).rotateZ(-Math.PI / 2), matKrom, 0.0215, 0, 0);
+  for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; s.add(baut(0.0012, 0.0015).rotateZ(Math.PI / 2), matKrom, 0.0235, Math.cos(a) * 0.008, Math.sin(a) * 0.008); }
+  s.add(baut(0.0022, 0.002).rotateZ(Math.PI / 2), matKrom, 0.0235, 0, 0);
+  s.gabung();
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.0135, 0.0018, 8, 32), new THREE.MeshBasicMaterial({ color })); ring.rotation.y = Math.PI / 2; ring.position.x = 0.0205; g.add(ring);
   return g;
 }
 const j1 = new THREE.Group(); j1.position.copy(BASE); scene.add(j1);
 {
-  const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.025, 40), matDark); plate.position.y = 0.0125; plate.castShadow = true; scene.add(plate); plate.position.add(BASE);
+  const dasar = new THREE.Group(); dasar.position.copy(BASE); scene.add(dasar); const d = susun(dasar);
+  d.add(new THREE.CylinderGeometry(0.07, 0.08, 0.025, 48), matDark, 0, 0.0125, 0);
+  d.add(cincin(0.062, 0.052, 0.004, 48), matKrom, 0, 0.026, 0);                 // bantalan putar
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + .3; d.add(baut(0.003, 0.003), matKrom, Math.cos(a) * 0.072, 0.026, Math.sin(a) * 0.072); }
+  d.gabung();
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.066, 0.004, 8, 48), new THREE.MeshBasicMaterial({ color: SC[0] })); ring.rotation.x = Math.PI / 2; ring.position.copy(BASE).setY(TY + 0.027); scene.add(ring);
-  const turret = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.055, 0.05, 32), matArm); turret.position.y = 0.05; turret.castShadow = true; j1.add(turret);
-  for (const s of [-1, 1]) { const ear = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.07, 0.05), matArm); ear.position.set(s * 0.032, H0 - 0.012, 0); ear.castShadow = true; j1.add(ear); }
+  const t = susun(j1);
+  t.add(new THREE.CylinderGeometry(0.05, 0.055, 0.05, 40), matArm, 0, 0.05, 0);
+  t.add(cincin(0.05, 0.04, 0.003, 40), matDark, 0, 0.076, 0);
+  for (const s of [-1, 1]) {                                                       // bracket U bahu
+    t.add(kotakTumpul(0.008, 0.07, 0.05, 0.003), matArm, s * 0.032, H0 - 0.012, 0);
+    t.add(new THREE.CylinderGeometry(0.008, 0.008, 0.0085, 20).rotateZ(Math.PI / 2), matDark, s * 0.032, H0 - 0.03, 0); // lubang peringan (kesan)
+    for (const z of [-1, 1]) t.add(baut(0.0022, 0.003).rotateZ(Math.PI / 2), matKrom, s * 0.0365, 0.085, z * 0.015);
+  }
+  t.gabung();
 }
 const j2 = new THREE.Group(); j2.position.set(0, H0, 0); j1.add(j2);
 const j3 = new THREE.Group(); j3.position.set(0, 0, -L2); j2.add(j3);
 const j4 = new THREE.Group(); j4.position.set(0, 0, -L3); j3.add(j4);
-function link(parent, len, w) {
-  for (const s of [-1, 1]) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.006, w, len), matArm); m.position.set(s * 0.026, 0, -len / 2); m.castShadow = true; parent.add(m); }
-  const brace = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.008, len * .5), matArm); brace.position.set(0, -w / 2 + 0.004, -len / 2); parent.add(brace);
+function link(parent, len, w) { // dua pelat bracket aluminium dengan lubang peringan + penguat bawah + baut
+  const k = susun(parent);
+  for (const s of [-1, 1]) {
+    k.add(kotakTumpul(0.006, w, len, 0.0025), matArm, s * 0.026, 0, -len / 2);
+    const n = Math.max(1, Math.round(len / 0.05) - 1);
+    for (let i = 1; i <= n; i++) k.add(new THREE.CylinderGeometry(w * .28, w * .28, 0.0065, 20).rotateZ(Math.PI / 2), matDark, s * 0.026, 0, -len * i / (n + 1));
+    for (const z of [0.012, len - 0.012]) k.add(baut(0.002, 0.003).rotateZ(Math.PI / 2), matKrom, s * 0.0295, w * .3, -z);
+  }
+  k.add(kotakTumpul(0.052, 0.008, len * .5, 0.002), matArm, 0, -w / 2 + 0.004, -len / 2);
+  k.gabung();
 }
 link(j2, L2, 0.03); link(j3, L3, 0.026);
 [j2, j3, j4].forEach((j, i) => { const s = servoBox(SC[i + 1]); j.add(s); });
@@ -196,11 +226,16 @@ link(j2, L2, 0.03); link(j3, L3, 0.026);
 const tipLocal = new THREE.Vector3(0, 0, -L4);
 const fingers = [];
 {
-  const palm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.05), matArm); palm.position.set(0, 0, -0.055); palm.castShadow = true; j4.add(palm);
-  const sv = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.03, 0.04), matDark); sv.position.set(0, 0.022, -0.055); j4.add(sv);
+  const c = susun(j4);
+  c.add(kotakTumpul(0.06, 0.02, 0.05, 0.004), matArm, 0, 0, -0.055);
+  c.add(kotakTumpul(0.022, 0.03, 0.04, 0.003), matDark, 0, 0.022, -0.055);
+  for (const s of [-1, 1]) c.add(new THREE.CylinderGeometry(0.008, 0.008, 0.004, 16), matKrom, s * 0.008, 0.011, -0.075); // roda gigi capit
+  c.gabung();
   for (const s of [-1, 1]) {
-    const f = new THREE.Group(); f.position.set(s * 0.02, 0, -0.08); j4.add(f);
-    const m = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.018, 0.065), new THREE.MeshStandardMaterial({ color: 0xa066ff, metalness: .3, roughness: .4 })); m.position.z = -0.025; m.castShadow = true; f.add(m);
+    const f = new THREE.Group(); f.position.set(s * 0.02, 0, -0.08); j4.add(f); const fj = susun(f);
+    fj.add(kotakTumpul(0.006, 0.018, 0.065, 0.002), matJari, 0, 0, -0.025);
+    fj.add(kotakTumpul(0.003, 0.014, 0.04, 0.001, 1), matKaret, -s * 0.0042, 0, -0.035); // pad karet di sisi dalam
+    fj.gabung();
     fingers.push(f);
   }
 }
@@ -344,7 +379,7 @@ function fisikaKubus(dt) {
           if (b.warna === c.warna) {
             c.done = true; skor++; c.m.material.emissive.setHex(0x333333);
             popup(p.clone().add(new THREE.Vector3(0, .12, 0)), `✓ ${skor}/3`, '#7dffa0', .22); tone(1200, .12, 'triangle', .2); setTimeout(() => tone(1600, .18, 'triangle', .2), 90);
-            if (skor === 3) { tSelesai = (performance.now() - tMulai) / 1000; ronde++; if (!terbaik || tSelesai < terbaik) terbaik = tSelesai;
+            if (skor === 3) { tSelesai = (performance.now() - tMulai) / 1000; ronde++; window.uversSkor?.('lengan', +tSelesai.toFixed(1), tSelesai.toFixed(1) + ' s', true); if (!terbaik || tSelesai < terbaik) terbaik = tSelesai;
               popup(BASE.clone().add(new THREE.Vector3(0, .45, 0)), L(`Selesai! ${tSelesai.toFixed(1)} s`, `Done! ${tSelesai.toFixed(1)} s`), '#ffd23f', .35);
               [660, 880, 1100, 1320].forEach((f, i) => setTimeout(() => tone(f, .18, 'square', .12), i * 120)); }
           } else {
@@ -443,6 +478,7 @@ function updateCtrls(dt) {
     const near = ray.ray.origin.distanceTo(target) < 0.09;
     const hits = ray.intersectObjects([...buttons, tHit], false);
     const hit = near ? { object: tHit, distance: 0.02, point: target } : hits[0];
+    if ((hit?.object || null) !== o.prevHover) { o.prevHover = hit?.object || null; if (hit) haptic(o, .12, 12); } // getar kecil saat menyentuh tombol/bola
     if (hit) {
       o.hover = hit.object === tHit ? { isBallHit: true } : hit.object;
       if (hit.object !== tHit) hit.object.material.emissive.setHex(0x335577);
@@ -508,6 +544,8 @@ function drawInfo() {
 // ---------- Loop ----------
 const clock = new THREE.Clock(); let infoT = 0, prevServo = servo.slice();
 placeTarget(); setTarget(target);
+import('./xrkit.js').then(m => m.pasang(renderer, scene, camera, { game: 'lengan', tutorial: [["Pegang bola biru: tarik trigger, atau cubit dengan tangan", "Grab the blue ball: pull the trigger, or pinch with your hand"], ["Tombol grip = buka/tutup capit", "Grip button = open/close the gripper"], ["Pindahkan 3 kubus ke kotak sewarna", "Move the 3 cubes into the matching boxes"]] })).catch(e => console.warn('xrkit', e));
+lingkungan(renderer, scene);
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
   updateCtrls(dt);

@@ -13,12 +13,14 @@
 <link rel="stylesheet" href="tema.css">
 <style>
   :root{--accent:#ff7a2a;--a1:#ff8a3d;--a2:#ff3f5e}
+  .lvl{display:flex;gap:6px;margin:4px 0 14px;flex-wrap:wrap}
+  .lvl a{padding:8px 14px;border-radius:999px;font-size:14px;font-weight:600;color:rgba(244,246,255,.75);text-decoration:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)}
+  .lvl a[aria-current="true"]{color:#fff;background:linear-gradient(90deg,var(--a1),var(--a2));border-color:transparent}
 </style>
 <script type="importmap">
 { "imports": { "three": "./three.module.min.js" } }
 </script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
 </head>
 <body>
 <script src="loader.js"></script>
@@ -32,15 +34,21 @@
 <div id="ov">
   <div class="xr-head"><div class="xr-icon">🚨</div><div><div class="tags"><span class="tag hot" data-en="Simulation">Simulasi</span><span class="tag">FPV</span><span class="tag">SAR</span></div><h1 data-en="SAR Robot">Robot SAR</h1></div></div>
   <p data-en="You see through the camera of a rescue robot in post-earthquake rubble. Drive the robot, use the thermal camera, and mark 5 victims. Careful: not everything hot is a victim.">Kamu melihat dari kamera robot penyelamat di reruntuhan pascagempa. Kemudikan robot, pakai kamera termal, dan tandai 5 korban. Hati-hati: tidak semua yang panas adalah korban.</p>
+  <div class="lvl" role="group" aria-label="Tingkat kesulitan"><a href="?level=mudah" data-l="mudah" data-en="Easy · 4 min">Mudah · 4 mnt</a><a href="?level=normal" data-l="normal" data-en="Normal · 3 min">Normal · 3 mnt</a><a href="?level=sulit" data-l="sulit" data-en="Hard · 2 min">Sulit · 2 mnt</a></div>
   <div class="btns"><button class="btn primary" id="btnVR" disabled data-en="Enter VR <span class=&quot;arw&quot;>→</span>">Masuk VR <span class="arw">→</span></button></div>
   <div id="msg" data-en="Checking device…" data-en-if="Memeriksa perangkat…">Memeriksa perangkat…</div>
 </div>
 <script type="module">
 import * as THREE from 'three';
+import { lingkungan, Mat, kotakTumpul, baut, cincin, uvNyata, patahkan, gabungMesh, teksturBeton, teksturBata, teksturTanah, teksturTapak } from './detail.js';
 
 // ====== PENGATURAN (silakan ubah) ======
 const HEADER = 'UVERS · Prodi TIF · ME · IE';
-const DURASI = 180;        // waktu misi (detik)
+// tingkat kesulitan (?level=mudah|normal|sulit): waktu, jumlah sumber panas palsu, kabut
+const LEVELS = { mudah: { durasi: 240, api: 1, mesin: 0, kabut: 30, bonus: 0, n: ['MUDAH', 'EASY'] }, normal: { durasi: 180, api: 2, mesin: 1, kabut: 30, bonus: 500, n: ['NORMAL', 'NORMAL'] }, sulit: { durasi: 120, api: 3, mesin: 2, kabut: 19, bonus: 1000, n: ['SULIT', 'HARD'] } };
+const LEVEL_ID = LEVELS[new URLSearchParams(location.search).get('level')] ? new URLSearchParams(location.search).get('level') : 'normal', LV = LEVELS[LEVEL_ID];
+document.querySelectorAll('.lvl a').forEach(a => { a.setAttribute('aria-current', String(a.dataset.l === LEVEL_ID)); const u = new URL(location.href); u.searchParams.set('level', a.dataset.l); a.href = u.search; });
+const DURASI = LV.durasi;  // waktu misi (detik)
 const VMAX = 1.1;          // kecepatan maju maksimum (m/s)
 const WMAX = 0.8;          // kecepatan belok maksimum (rad/s) — sengaja pelan agar tidak pusing
 const N_KORBAN = 5, SEED = 7;
@@ -104,7 +112,7 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 const FOGC = 0x8a7a68;
 scene.background = new THREE.Color(FOGC);
-scene.fog = new THREE.Fog(FOGC, 6, 30);
+scene.fog = new THREE.Fog(FOGC, 6, LV.kabut);
 const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.03, 120);
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
@@ -124,13 +132,16 @@ function reg(mesh, heat = 0.12, solid = true, los = true) {
   mesh.userData.heat = heat; allMeshes.push(mesh); if (los) losMeshes.push(mesh); scene.add(mesh); return mesh;
 }
 function solidBox(x, z, w, d, a = 0) { solids.push({ x, z, hx: w / 2, hz: d / 2, a }); }
-const M = {
-  beton: new THREE.MeshStandardMaterial({ color: 0x9a9184, roughness: .95 }),
-  beton2: new THREE.MeshStandardMaterial({ color: 0x7d746a, roughness: .95 }),
-  bata: new THREE.MeshStandardMaterial({ color: 0x9c5a44, roughness: .9 }),
-  besi: new THREE.MeshStandardMaterial({ color: 0x4a3a30, metalness: .6, roughness: .6 }),
-  tanah: new THREE.MeshStandardMaterial({ color: 0x6e6052, roughness: 1 }),
+const TB = teksturBeton('#9a9184'), TB2 = teksturBeton('#7d746a'), TBA = teksturBata(), TT = teksturTanah();
+TT.map.repeat.set(14, 14);
+const M = { // tekstur prosedural (detail.js): beton berbintik & retak, bata bersusun, tanah berkerikil
+  beton: new THREE.MeshStandardMaterial({ map: TB.map, roughness: .95 }),
+  beton2: new THREE.MeshStandardMaterial({ map: TB2.map, roughness: .95 }),
+  bata: new THREE.MeshStandardMaterial({ map: TBA.map, bumpMap: TBA.bump, bumpScale: 2, roughness: .9 }),
+  besi: new THREE.MeshStandardMaterial({ color: 0x5a4234, metalness: .7, roughness: .55 }),
+  tanah: new THREE.MeshLambertMaterial({ map: TT.map }), // lantai: Lambert (paling ringan) karena menutupi layar terluas
 };
+const kotakB = (w, h, d, sx = 1, sy = 1, sz = 1) => uvNyata(new THREE.BoxGeometry(w, h, d, sx, sy, sz), 1.2); // UV menurut ukuran nyata
 scene.add(new THREE.HemisphereLight(0xfff0dd, 0x3a3028, 1.5));
 const sun = new THREE.DirectionalLight(0xffe2b8, 1.6); sun.position.set(8, 14, 5); scene.add(sun);
 {
@@ -138,7 +149,7 @@ const sun = new THREE.DirectionalLight(0xffe2b8, 1.6); sun.position.set(8, 14, 5
   // pagar batas
   const tapeM = new THREE.MeshBasicMaterial({ color: 0xffd23f });
   for (const [x, z, w, d] of [[0, -ARENA / 2, ARENA, .3], [0, ARENA / 2, ARENA, .3], [-ARENA / 2, 0, .3, ARENA], [ARENA / 2, 0, .3, ARENA]]) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1.2, d), M.beton2); m.position.set(x, .6, z); reg(m); solidBox(x, z, w, d);
+    const m = new THREE.Mesh(kotakB(w, 1.2, d), M.beton2); m.position.set(x, .6, z); reg(m); solidBox(x, z, w, d);
     const t = new THREE.Mesh(new THREE.BoxGeometry(w + .02, .08, d + .02), tapeM); t.position.set(x, 1.0, z); reg(t, .1, false, false);
   }
 }
@@ -148,29 +159,29 @@ const bebas = (x, z, r) => Math.hypot(x, z) > 3.2 && area.every(a => Math.hypot(
 function cariTempat(r, tries = 400) { for (let i = 0; i < tries; i++) { const x = (rnd() - .5) * (ARENA - 4), z = (rnd() - .5) * (ARENA - 4); if (bebas(x, z, r)) return [x, z]; } return null; }
 function dinding(x, z, w, a) {
   const h = 1.4 + rnd() * 1.8, g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = a;
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, .25), rnd() < .5 ? M.bata : M.beton); m.position.y = h / 2; m.rotation.z = (rnd() - .5) * .12; g.add(m);
+  const m = new THREE.Mesh(kotakB(w, h, .25), rnd() < .5 ? M.bata : M.beton); m.position.y = h / 2; m.rotation.z = (rnd() - .5) * .12; g.add(m);
   // tepi patah
-  for (let i = 0; i < 4; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(.3 + rnd() * .5, .3 + rnd() * .5, .26), m.material); c.position.set((rnd() - .5) * w, h + rnd() * .2 - .1, 0); c.rotation.z = rnd() * 1.5; g.add(c); }
+  for (let i = 0; i < 4; i++) { const c = new THREE.Mesh(patahkan(kotakB(.3 + rnd() * .5, .3 + rnd() * .5, .26, 2, 2, 1), .22), m.material); c.position.set((rnd() - .5) * w, h + rnd() * .2 - .1, 0); c.rotation.z = rnd() * 1.5; g.add(c); }
   scene.add(g); g.traverse(o => { if (o.isMesh) { o.userData.heat = 0.12; allMeshes.push(o); losMeshes.push(o); } });
   solidBox(x, z, w, .45, a); area.push([x, z, w / 2 + .3]);
 }
 function pelat(x, z) {
   const w = 2.5 + rnd() * 2, d = 1.8 + rnd() * 1.5, a = rnd() * Math.PI, tilt = .25 + rnd() * .35;
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, .22, d), M.beton); m.position.set(x, Math.sin(tilt) * d / 2 + .05, z); m.rotation.set(tilt, a, 0, 'YXZ'); reg(m);
+  const m = new THREE.Mesh(kotakB(w, .22, d), M.beton); m.position.set(x, Math.sin(tilt) * d / 2 + .05, z); m.rotation.set(tilt, a, 0, 'YXZ'); reg(m);
   for (let i = 0; i < 5; i++) { // besi beton mencuat
-    const r = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, .5 + rnd() * .6, 5), M.besi);
+    const r = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, .5 + rnd() * .6, 6), M.besi);
     r.position.set(x + (rnd() - .5) * w * .8, .3 + rnd() * .6, z + (rnd() - .5) * d * .5); r.rotation.set(rnd() - .5, 0, rnd() - .5); reg(r, .1, false, false);
   }
   solidBox(x, z, w, d * Math.cos(tilt), a); area.push([x, z, Math.max(w, d) / 2 + .3]);
 }
 function kolom(x, z) {
-  const h = 2 + rnd() * 2.5, m = new THREE.Mesh(new THREE.BoxGeometry(.45, h, .45), M.beton2); m.position.set(x, h / 2, z); m.rotation.set((rnd() - .5) * .2, rnd(), (rnd() - .5) * .2); reg(m);
+  const h = 2 + rnd() * 2.5, m = new THREE.Mesh(patahkan(kotakB(.45, h, .45, 1, 4, 1), .02), M.beton2); m.position.set(x, h / 2, z); m.rotation.set((rnd() - .5) * .2, rnd(), (rnd() - .5) * .2); reg(m);
   solidBox(x, z, .55, .55, m.rotation.y); area.push([x, z, .6]);
 }
 function puing(x, z) {
   const r = .8 + rnd() * .8, n = 8 + Math.floor(rnd() * 8);
   for (let i = 0; i < n; i++) {
-    const s = .2 + rnd() * .5, m = new THREE.Mesh(new THREE.BoxGeometry(s, s * .6, s * (.6 + rnd())), rnd() < .4 ? M.bata : M.beton2);
+    const s = .2 + rnd() * .5, m = new THREE.Mesh(patahkan(kotakB(s, s * .6, s * (.6 + rnd()), 2, 2, 2), .28), rnd() < .4 ? M.bata : M.beton2);
     const aa = rnd() * 6.28, rr = rnd() * r; m.position.set(x + Math.cos(aa) * rr, s * .3 + (1 - rr / r) * .35, z + Math.sin(aa) * rr); m.rotation.set(rnd(), rnd() * 3, rnd()); reg(m);
   }
   solids.push({ x, z, hx: r * .75, hz: r * .75, a: 0, round: true }); area.push([x, z, r + .3]);
@@ -179,9 +190,20 @@ for (let i = 0; i < 16; i++) { const p = cariTempat(2); if (p) dinding(p[0], p[1
 for (let i = 0; i < 9; i++) { const p = cariTempat(2.2); if (p) pelat(p[0], p[1]); }
 for (let i = 0; i < 12; i++) { const p = cariTempat(.8); if (p) kolom(p[0], p[1]); }
 for (let i = 0; i < 12; i++) { const p = cariTempat(1.4); if (p) puing(p[0], p[1]); }
+// gabungkan semua reruntuhan statis per material → ratusan draw call jadi beberapa saja
+{
+  const losSet = new Set(losMeshes);
+  const statis = allMeshes.filter(m => !m.isInstancedMesh && m.geometry.type !== 'PlaneGeometry');
+  statis.forEach(m => { m.userData.los = losSet.has(m); });
+  const sel = m => { const p = m.getWorldPosition(new THREE.Vector3()); return `${p.x < 0 ? 0 : 1}${p.z < 0 ? 0 : 1}`; }; // 4 kuadran: frustum culling tetap bekerja
+  const hasil = gabungMesh(statis, scene, m => `${m.material.uuid}|${m.userData.heat}|${m.userData.los}|${sel(m)}`);
+  const sisa = allMeshes.filter(m => m.parent);
+  allMeshes.splice(0, allMeshes.length, ...sisa, ...hasil);
+  losMeshes.splice(0, losMeshes.length, ...allMeshes.filter(m => m.userData.los || (losSet.has(m) && m.parent)));
+}
 // kerikil kecil (instanced, tanpa tabrakan)
 {
-  const geo = new THREE.DodecahedronGeometry(.08, 0), im = new THREE.InstancedMesh(geo, M.beton2, 900), d = new THREE.Object3D();
+  const geo = patahkan(new THREE.IcosahedronGeometry(.08, 0), .35), im = new THREE.InstancedMesh(geo, M.beton2, 900), d = new THREE.Object3D();
   for (let i = 0; i < 900; i++) { d.position.set((rnd() - .5) * ARENA, .03, (rnd() - .5) * ARENA); d.rotation.set(rnd() * 3, rnd() * 3, 0); d.scale.setScalar(.4 + rnd() * 1.4); d.updateMatrix(); im.setMatrixAt(i, d.matrix); }
   reg(im, .1, false, false);
 }
@@ -214,33 +236,55 @@ const flameTex = (() => { const c = document.createElement('canvas'); c.width = 
   g.addColorStop(0, 'rgba(255,250,200,1)'); g.addColorStop(.35, 'rgba(255,170,40,.9)'); g.addColorStop(1, 'rgba(255,60,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
 const flames = [];
 function api(x, z) {
-  const drum = new THREE.Mesh(new THREE.CylinderGeometry(.3, .3, .8, 16), new THREE.MeshStandardMaterial({ color: 0x5a2a1a, metalness: .5, roughness: .6 }));
-  drum.position.set(x, .4, z); reg(drum, 0.97);
+  const dg = [new THREE.CylinderGeometry(.3, .3, .8, 28, 1, true), new THREE.CircleGeometry(.29, 28).rotateX(-Math.PI / 2).translate(0, .38, 0)];
+  for (const y of [-.38, -.13, .13, .38]) dg.push(new THREE.TorusGeometry(.302, .014, 6, 28).rotateX(Math.PI / 2).translate(0, y, 0));
+  const drumM = new THREE.MeshStandardMaterial({ color: 0x5a2a1a, metalness: .6, roughness: .55, side: THREE.DoubleSide });
+  const drum = new THREE.Group(); dg.forEach(g => drum.add(new THREE.Mesh(g, drumM)));
+  const dm = gabungMesh(drum.children.slice(), drum)[0]; drum.clear(); dm.position.set(x, .4, z); reg(dm, 0.97);
+  const drumMesh = dm;
   for (let i = 0; i < 3; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
     s.position.set(x + (rnd() - .5) * .2, .95 + i * .15, z + (rnd() - .5) * .2); s.scale.set(.6, .8, 1); scene.add(s); flames.push({ s, ph: rnd() * 6, base: s.position.y }); }
   solidBox(x, z, .7, .7); area.push([x, z, 1]);
-  targets.push({ kind: 'api', pos: new THREE.Vector3(x, .6, z), found: false, mesh: drum });
+  targets.push({ kind: 'api', pos: new THREE.Vector3(x, .6, z), found: false, mesh: drumMesh });
 }
 function mesin(x, z) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(1, .7, .6), new THREE.MeshStandardMaterial({ color: 0xc8a020, metalness: .4, roughness: .5 }));
-  m.position.set(x, .35, z); m.rotation.y = rnd() * 3; reg(m, 0.72);
+  const gM = new THREE.MeshStandardMaterial({ color: 0xc8a020, metalness: .45, roughness: .45 }), g = new THREE.Group();
+  const put = (geo, x, y, z) => { const o = new THREE.Mesh(geo, gM); o.position.set(x, y, z); g.add(o); };
+  put(kotakTumpul(.9, .5, .55, .05), 0, .05, 0);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) put(new THREE.CylinderGeometry(.025, .025, .7, 8), sx * .47, 0, sz * .28);
+  for (const sz of [-1, 1]) put(new THREE.CylinderGeometry(.025, .025, .96, 8).rotateZ(Math.PI / 2), 0, .34, sz * .28);
+  put(new THREE.CylinderGeometry(.05, .05, .25, 12), .25, .42, 0);
+  const m = gabungMesh(g.children.slice(), g)[0]; m.position.set(x, .35, z); m.rotation.y = rnd() * 3; reg(m, 0.72);
   solidBox(x, z, 1.1, .7, m.rotation.y); area.push([x, z, .9]);
   targets.push({ kind: 'mesin', pos: new THREE.Vector3(x, .5, z), found: false, mesh: m });
 }
 for (let i = 0; i < N_KORBAN; i++) { const p = cariTempat(1.3, 2000); if (p) korban(p[0], p[1], i); }
-for (let i = 0; i < 2; i++) { const p = cariTempat(1.1, 2000); if (p) api(p[0], p[1]); }
-{ const p = cariTempat(1, 2000); if (p) mesin(p[0], p[1]); }
+for (let i = 0; i < LV.api; i++) { const p = cariTempat(1.1, 2000); if (p) api(p[0], p[1]); }
+for (let i = 0; i < LV.mesin; i++) { const p = cariTempat(1, 2000); if (p) mesin(p[0], p[1]); }
 
 // ---------- Badan robot (yang terlihat dari kokpit) ----------
 {
-  const bodyM = new THREE.MeshStandardMaterial({ color: 0xff7a2a, roughness: .5, metalness: .2 });
-  const darkM = new THREE.MeshStandardMaterial({ color: 0x22252d, roughness: .7 });
-  const hull = new THREE.Mesh(new THREE.BoxGeometry(.7, .22, 1.0), bodyM); hull.position.set(0, .32, .1); robot.add(hull);
-  const nose = new THREE.Mesh(new THREE.BoxGeometry(.6, .12, .3), bodyM); nose.position.set(0, .3, -.48); nose.rotation.x = .4; robot.add(nose);
-  for (const s of [-1, 1]) { const tr = new THREE.Mesh(new THREE.BoxGeometry(.16, .26, 1.15), darkM); tr.position.set(s * .43, .14, .1); robot.add(tr);
-    for (let i = 0; i < 9; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(.17, .03, .05), M.besi); c.position.set(s * .43, .275, -.45 + i * .13); robot.add(c); } }
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, CAM_H - .5, 8), darkM); mast.position.set(0, (CAM_H + .5) / 2 - .1, .25); robot.add(mast);
-  const lamp = new THREE.Mesh(new THREE.BoxGeometry(.5, .05, .05), new THREE.MeshBasicMaterial({ color: 0xfff4d0 })); lamp.position.set(0, .45, -.45); robot.add(lamp);
+  // tracked rescue robot: cangkang oranye tumpul, rantai karet bertapak, roda jalan & sprocket aluminium, baut, lampu
+  const bodyM = Mat.plastik(0xff7a2a, .38), darkM = Mat.plastik(0x22252d, .55), metM = Mat.aluminium(0xaab0ba, .35);
+  const trackM = Mat.karet(0x18191c, teksturTapak(48)), lampM = new THREE.MeshBasicMaterial({ color: 0xfff4d0 });
+  const badan = [], add = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); robot.add(m); badan.push(m); return m; };
+  add(kotakTumpul(.7, .22, 1.0, .05), bodyM, 0, .32, .1);
+  add(kotakTumpul(.6, .12, .3, .04), bodyM, 0, .3, -.48, .4);
+  add(kotakTumpul(.54, .025, .62, .01), darkM, 0, .44, .18);                     // pelat atas anti-slip
+  for (const sx of [-1, 1]) for (const sz of [-.3, .5]) add(baut(.012, .012), metM, sx * .3, .435, sz);
+  for (const s of [-1, 1]) {
+    add(kotakTumpul(.16, .26, 1.15, .1, 4), trackM, s * .43, .14, .1);           // rantai
+    for (let i = 0; i < 16; i++) add(new THREE.BoxGeometry(.158, .018, .03), metM, s * .43, .275, -.45 + i * .073); // gigi rantai atas
+    for (const z of [-.36, -.1, .16, .42]) add(new THREE.CylinderGeometry(.075, .075, .02, 20).rotateZ(Math.PI / 2), metM, s * .515, .13, z + .1); // roda jalan
+    for (const z of [-.42, .62]) { add(new THREE.CylinderGeometry(.05, .05, .03, 10).rotateZ(Math.PI / 2), darkM, s * .52, .14, z); add(baut(.014, .01).rotateZ(Math.PI / 2), metM, s * .538, .14, z); }
+  }
+  add(new THREE.CylinderGeometry(.03, .03, CAM_H - .5, 12), metM, 0, (CAM_H + .5) / 2 - .1, .25);
+  for (const y of [.5, .75]) add(cincin(.045, .03, .02, 20), darkM, 0, y, .25);
+  add(new THREE.CylinderGeometry(.006, .006, .45, 6), darkM, .28, .65, .55);        // antena
+  add(new THREE.SphereGeometry(.014, 10, 8), Mat.plastik(0xff3b5c, .3), .28, .875, .55);
+  add(kotakTumpul(.56, .08, .07, .02), darkM, 0, .45, -.43);                      // rumah lampu
+  add(new THREE.BoxGeometry(.5, .04, .01), lampM, 0, .45, -.468);
+  gabungMesh(badan, robot);
 }
 robot.children.forEach(o => { if (o.isMesh) { o.userData.heat = .3; allMeshes.push(o); } });
 const headlight = new THREE.SpotLight(0xfff0d0, 25, 14, .55, .5, 1.6); headlight.position.set(0, .5, -.4); robot.add(headlight); headlight.target.position.set(0, 0, -6); robot.add(headlight.target);
@@ -290,11 +334,11 @@ function wrap(ctx, text, x, y, maxW, lh) {
 }
 
 
-const frameM = new THREE.MeshStandardMaterial({ color: 0x1c1f27, roughness: .6, metalness: .4 });
+const frameM = Mat.anodized(0x1c1f27);
 {
-  const dash = new THREE.Mesh(new THREE.BoxGeometry(1.5, .06, .45), frameM); dash.position.set(0, -.42, -.55); dash.rotation.x = -.15; cockpit.add(dash);
-  for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(.05, 1.0, .05), frameM); p.position.set(s * .78, 0, -.72); p.rotation.z = s * .18; cockpit.add(p); }
-  const top = new THREE.Mesh(new THREE.BoxGeometry(1.7, .05, .05), frameM); top.position.set(0, .46, -.72); cockpit.add(top);
+  const dash = new THREE.Mesh(kotakTumpul(1.5, .06, .45, .025), frameM); dash.position.set(0, -.42, -.55); dash.rotation.x = -.15; cockpit.add(dash);
+  for (const s of [-1, 1]) { const p = new THREE.Mesh(kotakTumpul(.05, 1.0, .05, .018), frameM); p.position.set(s * .78, 0, -.72); p.rotation.z = s * .18; cockpit.add(p); }
+  const top = new THREE.Mesh(kotakTumpul(1.7, .05, .05, .018), frameM); top.position.set(0, .46, -.72); cockpit.add(top);
   const edge = new THREE.Mesh(new THREE.BoxGeometry(1.5, .012, .012), new THREE.MeshBasicMaterial({ color: 0xff7a2a })); edge.position.set(0, -.39, -.33); cockpit.add(edge);
 }
 // layar termal
@@ -413,7 +457,8 @@ function tandai() {
   for (const o of ctrls) haptic(o, .7, 80);
   return best.kind;
 }
-function selesai() { S.selesai = true; setTimeout(() => tampilHint(L(`Misi selesai! ${S.found} korban · ${Math.round(S.t)} s`, `Mission complete! ${S.found} victims · ${Math.round(S.t)} s`), '#ffd23f', 6), 900); }
+function kirimSkor() { window.uversSkor?.('fpv', S.found * 1000 - S.salah * 300 + Math.max(0, Math.round(DURASI - S.t)) + (S.found ? LV.bonus : 0), `${S.found}/${N_KORBAN} · ${S.salah}✗ · ${Math.round(S.t)}s · ${L(...LV.n)}`); }
+function selesai() { S.selesai = true; kirimSkor(); setTimeout(() => tampilHint(L(`Misi selesai! ${S.found} korban · ${Math.round(S.t)} s`, `Mission complete! ${S.found} victims · ${Math.round(S.t)} s`), '#ffd23f', 6), 900); }
 
 // ---------- Kontrol ----------
 const ctrls = [0, 1].map(i => {
@@ -479,7 +524,7 @@ let lastStat = '';
 function gambarStatus() {
   const sisa = Math.max(0, DURASI - S.t), key = [S.found, S.salah, Math.ceil(sisa), S.selesai, Math.round(Math.abs(S.v) * 10)].join('|'); if (key === lastStat) return; lastStat = key;
   const { ctx, c } = stat; ctx.clearRect(0, 0, c.width, c.height); glass(ctx, c.width, c.height, 'rgba(255,122,42,.9)', 30);
-  ctx.textAlign = 'left'; ctx.fillStyle = '#ffb37a'; ctx.font = `bold 30px ${FONT}`; ctx.fillText(L('MISI SAR', 'SAR MISSION'), 32, 56);
+  ctx.textAlign = 'left'; ctx.fillStyle = '#ffb37a'; ctx.font = `bold 30px ${FONT}`; ctx.fillText(L('MISI SAR', 'SAR MISSION') + ' · ' + L(...LV.n), 32, 56);
   ctx.fillStyle = '#fff'; ctx.font = `bold 84px ${FONT}`; ctx.fillText(`${S.found}/${N_KORBAN}`, 32, 152);
   ctx.font = `30px ${FONT}`; ctx.fillStyle = '#d6dcf5'; ctx.fillText(L('korban ditemukan', 'victims found'), 32, 194);
   ctx.fillStyle = S.salah ? '#ff8aa5' : '#9aa3c7'; ctx.fillText(L(`Salah tandai: ${S.salah}`, `Wrong marks: ${S.salah}`), 32, 248);
@@ -494,12 +539,14 @@ function gambarStatus() {
 // ---------- Loop ----------
 const clock = new THREE.Clock(); let petaT = 0, jejakT = 0, now = 0;
 mulai();
+import('./xrkit.js').then(m => m.pasang(renderer, scene, camera, { game: 'fpv', parent: rig, tutorial: [["Stik KIRI = maju/mundur, stik KANAN = belok", "LEFT stick = forward/back, RIGHT stick = turn"], ["Lihat layar termal: korban tampak kuning terang", "Watch the thermal screen: victims glow bright yellow"], ["Hadapkan robot ke korban, tarik TRIGGER untuk menandai", "Face the robot at a victim, pull the TRIGGER to mark it"]] })).catch(e => console.warn('xrkit', e));
+lingkungan(renderer, scene);
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), .05); now += dt;
   updatePointers();
   const [thr, st] = S.selesai || S.t >= DURASI ? [0, 0] : bacaInput();
   langkah(thr, st, dt);
-  if (!S.selesai) { S.t += dt; if (S.t >= DURASI) { S.selesai = true; tampilHint(L(`Waktu habis! ${S.found}/${N_KORBAN} korban`, `Time's up! ${S.found}/${N_KORBAN} victims`), '#ffd23f', 6); } }
+  if (!S.selesai) { S.t += dt; if (S.t >= DURASI) { S.selesai = true; kirimSkor(); tampilHint(L(`Waktu habis! ${S.found}/${N_KORBAN} korban`, `Time's up! ${S.found}/${N_KORBAN} victims`), '#ffd23f', 6); } }
   robot.position.set(S.x, 0, S.z); robot.rotation.y = S.h;
   if (!renderer.xr.isPresenting) camera.rotation.set(look.pitch, look.yaw, 0, 'YXZ');
   // anti-pusing: vignette makin gelap saat robot bergerak/berbelok

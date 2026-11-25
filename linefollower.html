@@ -17,8 +17,7 @@
 <script type="importmap">
 { "imports": { "three": "./three.module.min.js" } }
 </script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
 </head>
 <body>
 <script src="loader.js"></script>
@@ -37,6 +36,7 @@
 </div>
 <script type="module">
 import * as THREE from 'three';
+import { lingkungan, Mat, kotakTumpul, baut, cincin, gabungMesh, teksturTapak } from './detail.js';
 
 // ====== PENGATURAN (silakan ubah) ======
 const HEADER = 'UVERS · Prodi TIF · ME · IE';
@@ -206,37 +206,51 @@ const LA = 0.11, SP = 0.028, B = 0.16, WR = 0.032; // jarak sensor ke as roda, j
 const XS = [-2, -1, 0, 1, 2];
 const robot = new THREE.Group(); scene.add(robot);
 const leds = [], wheels = [];
-{
-  const pcb = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.006, 0.13), new THREE.MeshStandardMaterial({ color: 0x0f6b4a, roughness: .5 }));
-  pcb.position.set(0.04, 0.045, 0); pcb.castShadow = true; robot.add(pcb);
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.006, 0.16), new THREE.MeshStandardMaterial({ color: 0x14306b }));
-  bar.position.set(LA, 0.03, 0); bar.castShadow = true; robot.add(bar);
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.005, 0.03), new THREE.MeshStandardMaterial({ color: 0x14306b }));
-  arm.position.set(LA - 0.04, 0.038, 0); arm.rotation.z = 0.25; robot.add(arm);
-  const batt = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.025, 0.045), new THREE.MeshStandardMaterial({ color: 0x2a8cf4, metalness: .3 }));
-  batt.position.set(0.0, 0.062, 0); robot.add(batt);
-  const mcu = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.008, 0.035), new THREE.MeshStandardMaterial({ color: 0x222831 }));
-  mcu.position.set(0.075, 0.052, 0); robot.add(mcu);
-  const caster = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 8), new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: .8, roughness: .2 }));
-  caster.position.set(0.12, 0.012, 0); robot.add(caster);
+{ // PCB bertekstur, bar sensor IR, Arduino Nano, 2 baterai 18650, motor TT kuning, roda karet bertapak, caster bola, spacer
+  const badan = [], add = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0, induk = robot, daftar = badan) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz);
+    geo.computeBoundingSphere(); m.castShadow = geo.boundingSphere.radius > 0.012; induk.add(m); daftar.push(m); return m; };
+  const krom = Mat.krom(), hitam = Mat.plastik(0x17181c, .5), biru = Mat.pcb('#14306b', 'IR x5');
+  add(kotakTumpul(0.2, 0.0035, 0.13, 0.0017, 2), Mat.pcb('#0f6b4a', 'LF PID'), 0.04, 0.045, 0);
+  add(kotakTumpul(0.03, 0.003, 0.16, 0.0014, 2), biru, LA, 0.03, 0);
+  add(kotakTumpul(0.06, 0.003, 0.03, 0.0014, 2), biru, LA - 0.04, 0.038, 0, 0, 0, 0.25);
+  for (const s of XS) for (const d of [-1, 1]) add(new THREE.CylinderGeometry(0.0022, 0.0022, 0.006, 10), d < 0 ? hitam : Mat.plastik(0x4a4f63, .2), LA + d * 0.004, 0.026, s * SP); // pemancar & penerima IR
+  add(kotakTumpul(0.075, 0.018, 0.042, 0.003), hitam, 0.0, 0.056, 0);                       // dudukan baterai
+  for (const z of [-0.0095, 0.0095]) { add(new THREE.CylinderGeometry(0.009, 0.009, 0.065, 20).rotateZ(Math.PI / 2), Mat.plastik(0x2a8cf4, .25), 0, 0.066, z);
+    add(new THREE.CylinderGeometry(0.0045, 0.0045, 0.003, 12).rotateZ(Math.PI / 2), krom, 0.034, 0.066, z); }
+  add(kotakTumpul(0.045, 0.0025, 0.018, 0.001, 1), Mat.pcb('#1f4fa8', 'NANO'), 0.085, 0.05, 0);   // Arduino Nano
+  add(new THREE.BoxGeometry(0.012, 0.002, 0.012), hitam, 0.085, 0.0525, 0, 0, Math.PI / 4);
+  add(new THREE.BoxGeometry(0.008, 0.004, 0.0075), krom, 0.106, 0.052, 0);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.CylinderGeometry(0.0025, 0.0025, 0.018, 6), krom, 0.04 + sx * 0.085, 0.035, sz * 0.055);
+  add(new THREE.CylinderGeometry(0.012, 0.014, 0.02, 16), hitam, 0.12, 0.032, 0);
+  const caster = add(new THREE.SphereGeometry(0.012, 20, 14), krom, 0.12, 0.012, 0);
+  const kuning = Mat.plastik(0xf2c230, .45), kaleng = Mat.aluminium(0xc8ccd4, .3);
+  for (const side of [1, -1]) {                                                                 // motor TT: gearbox kuning + kaleng motor
+    add(kotakTumpul(0.06, 0.022, 0.02, 0.003), kuning, 0, WR, side * (B / 2 - 0.03));
+    add(new THREE.CylinderGeometry(0.0095, 0.0095, 0.025, 18).rotateZ(Math.PI / 2), kaleng, -0.04, WR + 0.003, side * (B / 2 - 0.03));
+  }
+  gabungMesh(badan, robot);
   const ledOff = 0x331111;
   for (const s of XS) {
-    const l = new THREE.Mesh(new THREE.SphereGeometry(0.006, 8, 6), new THREE.MeshBasicMaterial({ color: ledOff }));
-    l.position.set(LA, 0.036, s * SP); robot.add(l); leds.push(l);
+    const l = new THREE.Mesh(new THREE.SphereGeometry(0.004, 12, 8), new THREE.MeshBasicMaterial({ color: ledOff }));
+    l.position.set(LA, 0.0335, s * SP); robot.add(l); leds.push(l);
   }
+  const tapak = Mat.karet(0x1b1b1d, teksturTapak(30)), velg = Mat.plastik(0xffc83d, .4);
   for (const side of [1, -1]) {
-    const g = new THREE.Group(); g.position.set(0, WR, side * (B / 2)); robot.add(g);
-    const tyre = new THREE.Mesh(new THREE.CylinderGeometry(WR, WR, 0.022, 24), new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: .9 }));
-    tyre.rotation.x = Math.PI / 2; tyre.castShadow = true; g.add(tyre);
-    const hub = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.008, 0.024), new THREE.MeshStandardMaterial({ color: 0xffc83d }));
-    g.add(hub); wheels.push(g);
-    const mot = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.022, 0.022), new THREE.MeshStandardMaterial({ color: 0xf2c230 }));
-    mot.position.set(0, WR, side * (B / 2 - 0.03)); robot.add(mot);
+    const g = new THREE.Group(); g.position.set(0, WR, side * (B / 2)); robot.add(g); const roda = [];
+    add(new THREE.CylinderGeometry(WR, WR, 0.022, 40, 1, true).rotateX(Math.PI / 2), tapak, 0, 0, 0, 0, 0, 0, g, roda);   // ban
+    for (const z of [-0.011, 0.011]) add(cincin(WR, WR * .72, 0.0015, 40).rotateX(Math.PI / 2), tapak, 0, 0, z, 0, 0, 0, g, roda);
+    add(cincin(WR * .74, WR * .18, 0.012, 32).rotateX(Math.PI / 2), velg, 0, 0, 0, 0, 0, 0, g, roda);                // velg
+    for (let i = 0; i < 5; i++) add(new THREE.BoxGeometry(0.004, WR * 1.1, 0.004), velg, 0, 0, side * 0.007, 0, 0, i / 5 * Math.PI, g, roda); // jari-jari
+    add(baut(0.004, 0.004).rotateX(Math.PI / 2), krom, 0, 0, side * 0.009, 0, 0, 0, g, roda);
+    gabungMesh(roda, g); wheels.push(g);
   }
   // penanda depan
   const tip = new THREE.Mesh(new THREE.ConeGeometry(0.014, 0.03, 3), new THREE.MeshBasicMaterial({ color: 0x3ee6c4 }));
   tip.rotation.z = -Math.PI / 2; tip.position.set(0.15, 0.05, 0); robot.add(tip);
 }
+// robot pembanding: salinan tembus pandang
+const ghost = robot.clone(true); ghost.visible = false; scene.add(ghost);
+ghost.traverse(o => { if (o.material) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = .4; o.material.depthWrite = false; if (o.material.color) o.material.color.lerp(new THREE.Color(0xb08cff), .5); } o.castShadow = false; });
 // jejak
 const TRAIL = 700, trailPos = new Float32Array(TRAIL * 3); let trailN = 0;
 const trailGeo = new THREE.BufferGeometry(); trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3)); trailGeo.setDrawRange(0, 0);
@@ -248,7 +262,7 @@ function pushTrail(x, z) {
 }
 
 // ---------- Pengendali ----------
-const P = { Kp: 1.5, Ki: 0, Kd: 0.03, spd: 0.7, mode: 'pid' };   // nilai awal = "PD pas"
+const P = { Kp: 1.5, Ki: 0, Kd: 0.03, spd: 0.7, mode: 'pid' }, PM = P;   // nilai awal = "PD pas"
 const LIM = { Kp: [0, 4, 0.1], Ki: [0, 3, 0.1], Kd: [0, 0.1, 0.005], spd: [0.3, 1.0, 0.05] };
 const PRESETS = {
   kecil: { t: L('Kp terlalu kecil', 'Kp too small'), Kp: 0.2, Ki: 0, Kd: 0, spd: 0.7, mode: 'pid' },
@@ -257,18 +271,19 @@ const PRESETS = {
   balap: { t: L('Balap', 'Race'), Kp: 2.5, Ki: 0, Kd: 0.05, spd: 0.9, mode: 'pid' },
   onoff: { t: 'ON-OFF 2 sensor', Kp: 0, Ki: 0, Kd: 0, spd: 0.7, mode: 'onoff' },
 };
-const S = {}; // keadaan simulasi
-function resetSim() {
+const S = {}, SM = S; // keadaan simulasi robot utama
+const G = {}; let GP = null, ghostLaps = []; // robot pembanding ("hantu"): keadaan, parameter beku, catatan putaran
+function resetSim(S = SM, utama = true) {   // S = keadaan robot yang di-reset (utama atau pembanding)
   Object.assign(S, { x: TP[0], z: TP[1], h: Math.atan2(SEG[1], SEG[0]), vl: 0, vr: 0, uL: 0, uR: 0,
     I: 0, pe: 0, last: 0, e: 0, u: 0, pT: 0, iT: 0, dT: 0, acc: 0, idx: 0, prog: 0, lapT: 0, rs: [0, 0, 0, 0, 0],
     off: false, offT: 0, lost: false });
-  trailN = 0; trailGeo.setDrawRange(0, 0); hist.fill(0); histU.fill(0);
+  if (utama) { trailN = 0; trailGeo.setDrawRange(0, 0); hist.fill(0); histU.fill(0); }
 }
 const HN = 300, hist = new Float32Array(HN), histU = new Float32Array(HN); let hi = 0; // 6 detik riwayat error
 let running = true, laps = [], best = null, offCount = 0, recentOff = 0, lastPreset = 'pas';
 const rnd = () => (Math.random() - 0.5) * 0.04; // derau sensor kecil
 
-function kontrol() {
+function kontrol(S, P, utama) {
   const fx = Math.cos(S.h), fz = Math.sin(S.h), lx = -fz, lz = fx;
   const rs = S.rs;
   for (let k = 0; k < 5; k++) {
@@ -294,12 +309,12 @@ function kontrol() {
     else { S.uL = S.uR = P.spd; S.e = 0; }
     S.u = (S.uR - S.uL) / 2; S.pT = S.iT = S.dT = 0;
   }
-  hist[hi] = S.e; histU[hi] = S.u; hi = (hi + 1) % HN;
+  if (utama) { hist[hi] = S.e; histU[hi] = S.u; hi = (hi + 1) % HN; }
 }
 const DT = 0.005;
-function langkah() {   // satu langkah fisika 5 ms; mengembalikan 'lap' | 'off' | null
-  if (S.off) { S.offT -= DT; if (S.offT <= 0) resetSim(); return null; }
-  S.acc += DT; if (S.acc >= CTRL) { S.acc -= CTRL; kontrol(); }
+function langkah(S = SM, P = PM, utama = true) {   // satu langkah fisika 5 ms; mengembalikan waktu putaran | 'off' | null
+  if (S.off) { S.offT -= DT; if (S.offT <= 0) resetSim(S, utama); return null; }
+  S.acc += DT; if (S.acc >= CTRL) { S.acc -= CTRL; kontrol(S, P, utama); }
   const a = 1 - Math.exp(-DT / TAU);
   S.vl += (S.uL * VMAX - S.vl) * a; S.vr += (S.uR * VMAX - S.vr) * a;
   const v = (S.vl + S.vr) / 2, w = (S.vr - S.vl) / B;
@@ -329,8 +344,8 @@ renderer.xr.addEventListener('sessionstart', initAudio);
 
 // ---------- Panel tombol ----------
 const panel = new THREE.Group(); panel.position.set(-0.62, 1.0, -0.5); panel.rotation.set(-0.7, 0.75, 0, 'YXZ'); scene.add(panel);
-const panelBg = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.56, 0.015), new THREE.MeshStandardMaterial({ color: 0x172a2a, metalness: .3 }));
-panelBg.position.set(0, -0.01, -0.01); panel.add(panelBg);
+const panelBg = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.66, 0.015), new THREE.MeshStandardMaterial({ color: 0x172a2a, metalness: .3 }));
+panelBg.position.set(0, -0.06, -0.01); panel.add(panelBg);
 const buttons = [];
 function drawFace(ctx, c, label, fs, sub) {
   ctx.clearRect(0, 0, c.width, c.height);
@@ -368,11 +383,17 @@ Object.entries(PRESETS).forEach(([id, p], i) => {
   presetBtns[id].userData.preset = id;
 });
 const runBtn = makeButton(L('⏸ Jeda', '⏸ Pause'), -0.2, -0.225, () => { running = !running; runBtn.userData.set(running ? L('⏸ Jeda', '⏸ Pause') : L('▶ Jalan', '▶ Run')); tone(600, .08); }, 0x2f5a5a, .17, .065, 46);
-makeButton(L('↺ Ulang', '↺ Restart'), -0.01, -0.225, () => { resetSim(); tone(440, .1); }, 0x6b5a2f, .17, .065, 46);
+makeButton(L('↺ Ulang', '↺ Restart'), -0.01, -0.225, () => { resetSim(); if (GP) resetSim(G, false); tone(440, .1); }, 0x6b5a2f, .17, .065, 46);
+const cmpBtn = makeButton(L('📌 Jadikan pembanding', '📌 Pin as comparison'), 0, -0.315, () => setPembanding(!GP), 0x4a2f73, .6, .065, 40);
+function setPembanding(on) {
+  GP = on ? { ...P } : null; ghostLaps = []; ghost.visible = on;
+  cmpBtn.userData.set(on ? L('✕ Hapus pembanding', '✕ Remove comparison') : L('📌 Jadikan pembanding', '📌 Pin as comparison'));
+  resetSim(); if (on) resetSim(G, false); tone(on ? 990 : 520, .12, 'triangle', .15); lastInfo = '';
+}
 makeButton(L('✕ Keluar', '✕ Exit'), 0.19, -0.225, () => { try { renderer.xr.getSession()?.end(); } catch (e) {} }, 0x8a2433, .17, .065, 46);
 function pakaiPreset(id) {
   const p = PRESETS[id]; Object.assign(P, { Kp: p.Kp, Ki: p.Ki, Kd: p.Kd, spd: p.spd, mode: p.mode }); lastPreset = id;
-  resetSim(); running = true; runBtn.userData.set(L('⏸ Jeda', '⏸ Pause')); tone(880, .1, 'triangle', .15); refresh();
+  resetSim(); if (GP) resetSim(G, false); running = true; runBtn.userData.set(L('⏸ Jeda', '⏸ Pause')); tone(880, .1, 'triangle', .15); refresh();
 }
 function refresh() { for (const k in disp) disp[k].userData.set(P.mode === 'onoff' && k !== 'spd' ? '—' : fmt(k, P[k]), NAMA[k]); lastInfo = ''; }
 
@@ -403,6 +424,7 @@ function updatePointers() {
     ray.ray.origin.setFromMatrixPosition(o.c.matrixWorld);
     ray.ray.direction.set(0, 0, -1).applyMatrix4(tmpM);
     const hit = ray.intersectObjects(buttons, false)[0];
+    if ((hit?.object || null) !== o.prevHover) { o.prevHover = hit?.object || null; if (hit) haptic(o, .12, 12); } // getar kecil saat menyentuh tombol
     if (hit) { o.hover = hit.object; hit.object.material.emissive.setHex(0x335577); o.line.scale.z = hit.distance; o.dot.position.copy(hit.point); o.dot.visible = true; }
     else o.line.scale.z = 3;
   }
@@ -474,8 +496,12 @@ function drawInfo(force) {
   ctx.font = `30px ${FONT}`; ctx.fillStyle = best && best < TARGET ? '#7dffa0' : '#ffd23f';
   ctx.fillText(L(`Terbaik: ${best ? best.toFixed(2) + ' s' : '—'}   ·   Target < ${TARGET.toFixed(1)} s`, `Best: ${best ? best.toFixed(2) + ' s' : '—'}   ·   Target < ${TARGET.toFixed(1)} s`), 300, y + 52);
   ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = `25px ${FONT}`;
-  laps.slice(-3).reverse().forEach((l, k) => ctx.fillText(`${l.t.toFixed(2)} s  ·  ${l.cfg}`, 44, y + 110 + k * 36));
-  ctx.fillStyle = '#ff8aa5'; if (offCount) ctx.fillText(L(`Keluar lintasan: ${offCount}x`, `Off track: ${offCount}x`), Wd - 300, c.height - 36);
+  if (!GP) laps.slice(-3).reverse().forEach((l, k) => ctx.fillText(`${l.t.toFixed(2)} s  ·  ${l.cfg}`, 44, y + 110 + k * 36));
+  if (GP) { ctx.fillStyle = '#cdb6ff'; ctx.font = `25px ${FONT}`; const g = GP.mode === 'onoff' ? 'ON-OFF' : `Kp ${GP.Kp.toFixed(1)} Ki ${GP.Ki.toFixed(1)} Kd ${GP.Kd.toFixed(3)}`;
+    const ml = laps.length ? laps[laps.length - 1].t.toFixed(2) + ' s' : '…';
+    ctx.fillStyle = '#8ff5df'; ctx.fillText(`🤖 ${L('Utama', 'Main')}: ${cfgStr()} → ${ml}`, 44, y + 110);
+    ctx.fillStyle = '#cdb6ff'; ctx.fillText(`👻 ${L('Pembanding', 'Comparison')}: ${g} · ${Math.round(GP.spd * 100)}% → ` + (ghostLaps.length ? ghostLaps[ghostLaps.length - 1].toFixed(2) + ' s' : (G.off ? L('keluar', 'off') : '…')), 44, y + 150); }
+  ctx.font = `25px ${FONT}`; ctx.fillStyle = '#ff8aa5'; if (offCount) ctx.fillText(L(`Keluar lintasan: ${offCount}x`, `Off track: ${offCount}x`), Wd - 300, c.height - 36);
   info.tex.needsUpdate = true;
 }
 const cfgStr = () => P.mode === 'onoff' ? `ON-OFF · ${Math.round(P.spd * 100)}%` : `Kp ${P.Kp.toFixed(1)}  Ki ${P.Ki.toFixed(1)}  Kd ${P.Kd.toFixed(3)}  · ${Math.round(P.spd * 100)}%`;
@@ -485,8 +511,11 @@ refresh();
 const clock = new THREE.Clock(); let trailT = 0, physAcc = 0;
 function tampilkanRobot() {
   robot.position.set(AC.x + S.x, 0, AC.z + S.z); robot.rotation.y = -S.h;
+  if (GP) { ghost.position.set(AC.x + G.x, 0, AC.z + G.z); ghost.rotation.y = -G.h; }
   S.rs.forEach((r, k) => leds[k].material.color.setHex(r > .5 ? 0xff2a2a : 0x331111));
 }
+import('./xrkit.js').then(m => m.pasang(renderer, scene, camera, { game: 'linefollower', tutorial: [["Tunjuk tombol + / − di panel kiri untuk mengubah Kp, Ki, Kd", "Point at the + / − buttons on the left panel to change Kp, Ki, Kd"], ["Coba preset: Kp kecil, Kp besar, PD pas, Balap", "Try the presets: small Kp, big Kp, PD just right, Race"], ["Lihat grafik error di panel kanan, kejar putaran < 9 detik", "Watch the error graph on the right, chase a lap under 9 seconds"]] })).catch(e => console.warn('xrkit', e));
+lingkungan(renderer, scene);
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
   updatePointers();
@@ -494,10 +523,11 @@ renderer.setAnimationLoop(() => {
     physAcc += dt;
     while (physAcc >= DT) { physAcc -= DT;
       const r = langkah();
+      if (GP) { const rg = langkah(G, GP, false); if (typeof rg === 'number') { ghostLaps.push(rg); if (ghostLaps.length > 5) ghostLaps.shift(); lastInfo = ''; } }
       if (r === 'off') { offCount++; recentOff = 3; popup(robot.position.clone().setY(.3), L('Keluar lintasan!', 'Off the track!'), '#ff6b8a', .5); tone(180, .35, 'sawtooth', .15); for (const o of ctrls) haptic(o, .8, 120); }
       else if (typeof r === 'number') {
         laps.push({ t: r, cfg: cfgStr() }); if (laps.length > 20) laps.shift();
-        const rekor = !best || r < best; if (rekor) best = r;
+        const rekor = !best || r < best; if (rekor) { best = r; window.uversSkor?.('linefollower', +r.toFixed(2), cfgStr(), true); }
         popup(robot.position.clone().setY(.3), r.toFixed(2) + ' s' + (rekor ? L(' · rekor!', ' · record!') : ''), r < TARGET ? '#7dffa0' : '#ffd23f', .5);
         (r < TARGET ? [660, 880, 1100, 1320] : [880, 1100]).forEach((f, i) => setTimeout(() => tone(f, .16, 'square', .1), i * 110));
       }
@@ -518,6 +548,7 @@ renderer.setAnimationLoop(() => {
 // kait uji: jalankan fisika tanpa render
 window.__lf = { info: () => info.c.toDataURL(), catatan: () => ({ laps, best, offCount }),
   P, S, preset: pakaiPreset,
+  pembanding: (on) => setPembanding(on), ghost: () => ({ x: G.x, z: G.z, laps: ghostLaps.slice(), GP }),
   simulasi(detik) { resetSim(); let t = 0; while (t < detik) { const r = langkah(); t += DT; if (r === 'off') return { off: true, t }; if (typeof r === 'number') return { lap: r }; } return { lap: null, prog: S.prog / N }; },
 };
 </script>

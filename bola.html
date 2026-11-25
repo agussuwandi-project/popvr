@@ -17,8 +17,7 @@
 <script type="importmap">
 { "imports": { "three": "./three.module.min.js" } }
 </script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
 </head>
 <body>
 <script src="loader.js"></script>
@@ -37,6 +36,9 @@
 </div>
 <script type="module">
 import * as THREE from 'three';
+import { Ledakan } from './alien.js';
+import { lingkungan } from './detail.js';
+import { mergeGeometries } from './addons/BufferGeometryUtils.js';
 
 // ====== PENGATURAN (silakan ubah) ======
 const EVENT_NAME = L('Pameran Kampus UVERS', 'UVERS Campus Exhibition');
@@ -228,9 +230,15 @@ function updateTips() {
 function haptic(o, s = 0.7, ms = 40) { try { o?.source?.gamepad?.hapticActuators?.[0]?.pulse(s, ms); } catch (e) {} }
 
 // ---------- Target ----------
-const GEO = { normal: new THREE.SphereGeometry(1, 24, 16), gold: new THREE.OctahedronGeometry(1, 0), bomb: new THREE.IcosahedronGeometry(1, 0) };
+// bola mengilap, permata emas berfaset, bom dengan tutup & sumbu (satu mesh per target, digabung)
+const bom = (() => { const gs = [new THREE.SphereGeometry(1, 28, 18), new THREE.CylinderGeometry(.34, .4, .3, 20).translate(0, 1, 0), new THREE.CylinderGeometry(.06, .06, .45, 8).rotateZ(.35).translate(.08, 1.3, 0)];
+  return mergeGeometries(gs.map(g => { const x = g.toNonIndexed(); return x; })); })();
+const GEO = { normal: new THREE.SphereGeometry(1, 32, 24), gold: new THREE.IcosahedronGeometry(1, 1), bomb: bom };
 const MAT = {};
-for (const k in TYPES) MAT[k] = new THREE.MeshStandardMaterial({ color: TYPES[k].color, emissive: TYPES[k].color, emissiveIntensity: .45, roughness: .3, flatShading: k !== 'normal' });
+for (const k in TYPES) MAT[k] = new THREE.MeshStandardMaterial(k === 'normal' ? { color: TYPES[k].color, emissive: TYPES[k].color, emissiveIntensity: .35, roughness: .12, metalness: .1 }
+  : k === 'gold' ? { color: TYPES[k].color, emissive: TYPES[k].color, emissiveIntensity: .3, roughness: .18, metalness: 1, flatShading: true }
+  : { color: 0x22232a, emissive: TYPES[k].color, emissiveIntensity: .35, roughness: .3, metalness: .7 });
+for (const k in MAT) MAT[k].userData.pantul = true;
 const targets = [];
 const head = new THREE.Vector3();
 const R = THREE.MathUtils;
@@ -250,17 +258,10 @@ function removeTarget(i) { scene.remove(targets[i]); targets.splice(i, 1); }
 
 // ---------- Partikel ----------
 const parts = [], pGeo = new THREE.SphereGeometry(0.012, 6, 4);
-function burst(pos, color, n = 14) {
-  const mat = new THREE.MeshBasicMaterial({ color, transparent: true });
-  for (let i = 0; i < n; i++) {
-    const p = new THREE.Mesh(pGeo, mat); p.position.copy(pos);
-    p.userData = { v: new THREE.Vector3().randomDirection().multiplyScalar(R.randFloat(0.6, 1.6)), t: 0 };
-    scene.add(p); parts.push(p);
-  }
-  const f = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .8, blending: THREE.AdditiveBlending, depthWrite: false }));
-  f.position.copy(pos); f.scale.setScalar(.03); f.userData = { v: new THREE.Vector3(), t: 0, flash: true }; scene.add(f); parts.push(f);
-}
+const FX = new Ledakan(scene, { ringan: true });
+function burst(pos, color, n = 14) { FX.meledak(pos, color, n, .022, 1.4); }
 function updateParticles(dt) {
+  FX.update(dt);
   for (let i = parts.length - 1; i >= 0; i--) {
     const p = parts[i], u = p.userData; u.t += dt;
     if (u.flash) { p.scale.setScalar(.03 + u.t * .5); } else { u.v.y -= 2.5 * dt; p.position.addScaledVector(u.v, dt); }
@@ -278,6 +279,7 @@ function startGame() {
 }
 function endGame() {
   state = 'over'; while (targets.length) removeTarget(0);
+  window.uversSkor?.('bola', score, String(score));
   if (score > best) { best = score; newRecord = true; try { localStorage.setItem('popvr_best', best); } catch (e) {} }
   beep(880, .15); setTimeout(() => beep(660, .15), 160); setTimeout(() => beep(440, .4, 'triangle'), 320);
   setTimeout(() => { canStart = true; startBtn.visible = label.mesh.visible = true; }, 2000);
@@ -306,6 +308,8 @@ renderer.xr.addEventListener('sessionend', () => { if (state === 'playing') endG
 
 // ---------- Loop ----------
 const clock = new THREE.Clock(); let tickShown = -1, now = 0;
+import('./xrkit.js').then(m => m.pasang(renderer, scene, camera, { game: 'bola', tangan: false, tutorial: [["Sentuh bola dengan ujung jari atau controller", "Touch the bubbles with your fingertip or controller"], ["Biru +1, emas +5, hindari merah −3", "Blue +1, gold +5, avoid red −3"], ["Sentuh tombol hijau untuk mulai", "Touch the green button to start"]] })).catch(e => console.warn('xrkit', e));
+lingkungan(renderer, scene);
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05); now += dt;
   camera.getWorldPosition(head);

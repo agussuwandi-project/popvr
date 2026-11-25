@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Papan Skor · UVERS XR Lab</title>
+<meta name="description" content="Papan skor langsung pameran VR UVERS XR Lab.">
+<meta name="theme-color" content="#05060f">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="title-en" content="Scoreboard · UVERS XR Lab">
+<script src="i18n.js"></script>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="tema.css">
+<style>
+  :root{--accent:#ffd23f;--a1:#ff3fa4;--a2:#7b5cff}
+  body{overflow:auto}
+  main{position:relative;z-index:2;max-width:1600px;margin:0 auto;padding:96px clamp(16px,3vw,40px) 40px}
+  h1{font-size:clamp(30px,3.4vw,52px);margin:6px 0 4px;letter-spacing:-.02em}
+  h1 em{font-style:normal;background:linear-gradient(90deg,var(--a1),var(--a2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:rgba(244,246,255,.65);margin:0 0 22px;font-size:clamp(14px,1.2vw,18px)}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .bd{border-radius:22px;padding:18px 18px 14px;background:linear-gradient(160deg,rgba(38,34,78,.62),rgba(8,12,30,.62));border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 30%,transparent) inset,0 20px 50px -30px var(--c);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);min-height:300px}
+  .bd h2{display:flex;align-items:center;gap:10px;margin:0 0 2px;font-size:clamp(17px,1.4vw,22px)}
+  .bd h2 .ic{font-size:1.3em}
+  .bd .m{color:color-mix(in srgb,var(--c) 70%,#fff);font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+  ol{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+  li{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.04)}
+  li .r{font-weight:700;color:rgba(244,246,255,.5);text-align:center}
+  li:nth-child(1){background:color-mix(in srgb,var(--c) 18%,transparent)}
+  li:nth-child(1) .r{color:#ffd23f}
+  li .v{font-weight:700;font-size:clamp(18px,1.6vw,26px)}
+  li .x{font-size:12px;color:rgba(244,246,255,.55);display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  li .h{font-size:13px;color:rgba(244,246,255,.6);text-align:right;white-space:nowrap}
+  li.new{animation:baru 2.4s ease-out}
+  @keyframes baru{0%{box-shadow:0 0 0 2px #ffd23f,0 0 30px #ffd23f}100%{box-shadow:none}}
+  .kosong{color:rgba(244,246,255,.4);font-size:14px;padding:10px 4px}
+  .feed{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;color:rgba(244,246,255,.7);font-size:14px}
+  .feed b{color:#fff}
+  .chip{padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+  #err{display:none;margin:0 0 16px;padding:14px 16px;border-radius:14px;background:rgba(255,80,110,.12);border:1px solid rgba(255,80,110,.4);font-size:14px;line-height:1.5}
+  #err code{font-size:12px;white-space:pre-wrap;display:block;margin-top:8px;color:#ffd0da}
+  @media (max-width:1200px){.grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:640px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-lang-live="1">
+<script src="loader.js"></script>
+<div class="xr-aura" aria-hidden="true"><i></i><i></i><i></i></div>
+<header class="xr-top">
+  <div class="xr-left"><a class="xr-back" href="./">← Menu</a>
+    <div class="xr-brand"><div class="xr-logo">XR</div><div><b>UVERS XR Lab</b><span data-en="Live scoreboard">Papan skor langsung</span></div></div></div>
+  <div class="xr-pill" id="xrStatus" data-en="Connecting…" data-en-if="Menyambung…">Menyambung…</div>
+</header>
+<main>
+  <h1 data-en="Today's <em>scoreboard</em>">Papan <em>skor</em> hari ini</h1>
+  <p class="sub" data-en="Scores from every headset appear here automatically. Updates every few seconds.">Skor dari semua headset muncul di sini secara otomatis. Diperbarui setiap beberapa detik.</p>
+  <div id="err"></div>
+  <div class="grid" id="grid"></div>
+  <div class="feed" id="feed"></div>
+</main>
+<script type="module">
+const L = window.L;
+const DB = 'https://uvers-xr-default-rtdb.asia-southeast1.firebasedatabase.app';
+const GAMES = [
+  { id: 'invasi', ic: '🛸', n: ['Invasi Portal', 'Portal Invasion'], c: '#ff3fa4', m: ['Skor tertinggi', 'Top score'] },
+  { id: 'benteng', ic: '🏰', n: ['Benteng 4 Penjuru', 'Four-Corner Fort'], c: '#5dff8a', m: ['Skor tim', 'Team score'] },
+  { id: 'blaster', ic: '🚀', n: ['Galaksi Blaster', 'Galaxy Blaster'], c: '#a066ff', m: ['Skor tertinggi', 'Top score'] },
+  { id: 'bola', ic: '🎈', n: ['Pop Bola', 'Bubble Pop'], c: '#33ddff', m: ['Skor tertinggi', 'Top score'] },
+  { id: 'fpv', ic: '🚨', n: ['Robot SAR (FPV)', 'SAR Robot (FPV)'], c: '#ff7a2a', m: ['Korban · salah · waktu', 'Victims · wrong · time'] },
+  { id: 'lengan', ic: '🦾', n: ['Lengan Robot', 'Robot Arm'], c: '#c084fc', m: ['Misi tercepat', 'Fastest mission'] },
+  { id: 'linefollower', ic: '🛤️', n: ['Line Follower PID', 'Line Follower PID'], c: '#3ee6c4', m: ['Putaran tercepat', 'Fastest lap'] },
+];
+const q = new URLSearchParams(location.search);
+const tgl = q.get('tgl') || (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+const jam = w => { const d = new Date(w); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+const pill = document.getElementById('xrStatus'), err = document.getElementById('err');
+function status(ok, t) { pill.className = 'xr-pill ' + (ok ? 'ok' : 'err'); pill.textContent = t; }
+let seen = new Set(), first = true;
+
+function demo() { // ?demo=1 untuk pratinjau tanpa database
+  const r = (a, b) => Math.round(a + Math.random() * (b - a)), now = Date.now(), d = {};
+  const mk = (n, f) => Object.fromEntries(Array.from({ length: n }, (_, i) => ['k' + i, { ...f(), h: 'Headset ' + r(1, 4), w: now - r(0, 7200e3) }]));
+  d.invasi = mk(7, () => ({ s: r(800, 4200), t: Math.random() < .3 ? '★' : '' }));
+  d.benteng = mk(4, () => ({ s: r(1500, 6000), t: '★ 4P' }));
+  d.blaster = mk(9, () => ({ s: r(300, 2400), t: '' }));
+  d.bola = mk(8, () => ({ s: r(20, 95), t: '' }));
+  d.fpv = mk(5, () => { const f = r(2, 5), x = r(0, 2), t = r(70, 180); return { s: f * 1000 - x * 300 + (180 - t), t: `${f}/5 · ${x}✗ · ${t}s` }; });
+  d.lengan = mk(6, () => { const t = (r(150, 600) / 10); return { s: t, t: t.toFixed(1) + ' s', k: 1 }; });
+  d.linefollower = mk(6, () => { const t = r(780, 1100) / 100; return { s: t, t: 'Kp 2.5  Ki 0.0  Kd 0.050  · 90%', k: 1 }; });
+  return d;
+}
+function render(data) {
+  const grid = document.getElementById('grid'), all = [];
+  grid.innerHTML = GAMES.map(g => {
+    const rows = Object.entries(data?.[g.id] || {}).map(([id, v]) => ({ id, ...v })).filter(v => Number.isFinite(v.s));
+    rows.forEach(v => all.push({ g, ...v }));
+    const asc = g.id === 'lengan' || g.id === 'linefollower';
+    rows.sort((a, b) => asc ? a.s - b.s : b.s - a.s);
+    const top = rows.slice(0, 5);
+    const val = v => g.id === 'fpv' ? esc(String(v.t).split(' · ')[0]) : asc ? (g.id === 'linefollower' ? v.s.toFixed(2) : v.s.toFixed(1)) + ' s' : esc(v.s.toLocaleString(window.LANG === 'en' ? 'en-US' : 'id-ID'));
+    const extra = v => g.id === 'fpv' ? esc(String(v.t).split(' · ').slice(1).join(' · ')) : g.id === 'lengan' ? '' : g.id === 'linefollower' ? esc(v.t) : v.t ? esc(v.t) : '';
+    return `<section class="bd" style="--c:${g.c}"><h2><span class="ic">${g.ic}</span>${esc(L(...g.n))}</h2><div class="m">${esc(L(...g.m))} · ${rows.length} ${L('main', 'plays')}</div>` +
+      (top.length ? `<ol>${top.map((v, i) => `<li class="${!first && !seen.has(g.id + v.id) ? 'new' : ''}"><span class="r">${i + 1}</span><span><span class="v">${val(v)}</span>${extra(v) ? `<span class="x">${extra(v)}</span>` : ''}</span><span class="h">${esc(v.h)}<br>${jam(v.w)}</span></li>`).join('')}</ol>`
+        : `<div class="kosong">${L('Belum ada skor. Ayo main!', 'No scores yet. Go play!')}</div>`) + `</section>`;
+  }).join('');
+  all.forEach(v => seen.add(v.g.id + v.id)); first = false;
+  const last = all.sort((a, b) => b.w - a.w).slice(0, 6);
+  document.getElementById('feed').innerHTML = last.length ? `<span>${L('Terbaru:', 'Latest:')}</span>` + last.map(v => `<span class="chip">${v.g.ic} <b>${v.g.id === 'fpv' ? esc(String(v.t).split(' · ')[0]) : (v.k ? v.s + ' s' : esc(v.s))}</b> · ${esc(v.h)} · ${jam(v.w)}</span>`).join('') : '';
+}
+async function muat() {
+  if (q.get('demo') === '1') { render(demo()); status(true, L('Mode demo', 'Demo mode')); return; }
+  try {
+    const r = await fetch(`${DB}/papan/${tgl}.json`, { cache: 'no-store' });
+    if (r.status === 401 || r.status === 403) throw Object.assign(new Error('izin'), { izin: true });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    render(await r.json() || {}); status(true, L('Online · ', 'Online · ') + tgl); err.style.display = 'none';
+  } catch (e) {
+    status(false, e.izin ? L('Izin database ditolak', 'Database permission denied') : L('Offline — mencoba lagi…', 'Offline — retrying…'));
+    if (e.izin) { err.style.display = 'block'; err.innerHTML = L('Aturan Firebase belum mengizinkan path <b>papan</b>. Tambahkan aturan ini di Firebase Console → Realtime Database → Rules:', 'Firebase rules do not allow the <b>papan</b> path yet. Add this rule in Firebase Console → Realtime Database → Rules:') +
+      '<code>"papan": { "$tgl": { ".read": true, "$game": { "$id": { ".write": "!data.exists()", ".validate": "newData.hasChildren([\'s\', \'h\', \'w\']) && newData.child(\'s\').isNumber()" } } } }</code>'; }
+  }
+}
+muat(); setInterval(muat, 4000);
+document.addEventListener('langchange', () => { first = true; seen = new Set(); muat(); });
+</script>
+</body>
+</html>

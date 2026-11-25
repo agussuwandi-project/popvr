@@ -148,7 +148,8 @@ export function pasangLogo3D(renderer, scene, opsi = {}) {
     if (sudah || (opsi.syarat && !opsi.syarat())) return;
     sudah = true; mainkan();
   });
-  if (new URLSearchParams(location.search).get('logo3d') === '1') setTimeout(mainkan, 300);
+  if (new URLSearchParams(location.search).get('logo3d') === '1') { // pratinjau laptop: tunggu layar loading UVERS selesai dulu
+    const tunggu = () => document.getElementById('uvl') ? setTimeout(tunggu, 150) : setTimeout(mainkan, 300); tunggu(); }
   function pratinjau(t) { if (!playing) mainkan(); fixedT = t; }
   window.uversLogo3D = { mainkan, pratinjau };
   return { mainkan, pratinjau };
