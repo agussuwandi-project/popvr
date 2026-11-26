@@ -96,7 +96,8 @@ export function pasang(renderer, scene, camera, opsi = {}) {
 
   // ===== 3. reset otomatis =====
   let lastActive = performance.now(), lastPose = null, warn = null, warnT = 0;
-  function aktif() { lastActive = performance.now(); if (warn) { warn.mesh.visible = false; warnT = 0; } }
+  let XH = null, xhMulaiPada = 0; // asisten Xiao Huo (hologram 3D), dimuat terpisah
+  function aktif() { lastActive = performance.now(); if (warn) { warn.mesh.visible = false; warnT = 0; } XH?.peringatan(null); }
   for (let i = 0; i < 2; i++) { const c = renderer.xr.getController(i); c.addEventListener('selectstart', aktif); c.addEventListener('squeezestart', aktif); }
   let sedangReset = false;
   function resetPenuh() {
@@ -136,8 +137,15 @@ export function pasang(renderer, scene, camera, opsi = {}) {
   }
   let sesiMulai = 0, tunggu = 0;
   renderer.xr.addEventListener('sessionstart', () => { sesiKe++; sedangReset = false; sesiMulai = performance.now(); tunggu = 6; lastActive = performance.now(); lastPose = null; gapReset = false;
-    if (tut) { tutT = -(sesiKe === 1 ? 4.3 : 0.8); } }); // tunggu animasi logo 3D di sesi pertama
-  renderer.xr.addEventListener('sessionend', () => { if (tut) tut.mesh.visible = false; if (warn) warn.mesh.visible = false; });
+    const tunda = sesiKe === 1 ? 4.3 : 0.8; xhMulaiPada = performance.now() + tunda * 1000; // tunggu animasi logo 3D di sesi pertama
+    if (XH) XH.mulai(tunda); else if (tut) tutT = -tunda; });
+  renderer.xr.addEventListener('sessionend', () => { if (tut) tut.mesh.visible = false; if (warn) warn.mesh.visible = false; XH?.sembunyi(); xhMulaiPada = 0; });
+
+  // ===== 6. Xiao Huo: menggantikan panel tutorial & peringatan (panel lama tetap jadi cadangan bila gagal dimuat) =====
+  if (opsi.asisten !== false) import('./xiaohuo-vr.js').then(m => {
+    XH = m.pasang(renderer, scene, parent, { game, tutorial: opsi.tutorial });
+    if (renderer.xr.isPresenting && xhMulaiPada) XH.mulai(Math.max(0, (xhMulaiPada - performance.now()) / 1000));
+  }).catch(e => console.warn('Xiao Huo', e));
 
   // ===== 5. tangan =====
   const hands = [];
@@ -174,6 +182,7 @@ export function pasang(renderer, scene, camera, opsi = {}) {
     if (fpsP) { const cam = xrCam(); cam.getWorldPosition(head); cam.getWorldQuaternion(headQ); fpsP.mesh.position.copy(head).add(tmp.set(-.14, -.1, -.5).applyQuaternion(headQ)); fpsP.mesh.quaternion.copy(headQ); fpsP.mesh.visible = xr; }
     if (!xr) return;
     for (const hd of hands) { const J = hd.h.joints; if (!J) continue; for (const n in J) if (!hd.balls[n]) { const m = new THREE.Mesh(hd.geo, n.endsWith('tip') ? hd.tip : hd.jm); m.scale.setScalar(n.endsWith('tip') ? .009 : .007); J[n].add(m); hd.balls[n] = m; } }
+    if (XH && dt < 1) XH.update(dt);
     if (tunggu > 0) { tunggu--; return; } // pose kepala belum stabil di beberapa frame pertama
     // headset sempat dilepas (frame berhenti lama) → pengunjung baru: reset
     if (IDLE > 0 && dt > 25 && !gapReset) { gapReset = true; resetPenuh(); return; }
@@ -184,9 +193,10 @@ export function pasang(renderer, scene, camera, opsi = {}) {
     if (warn && IDLE > 0) {
       const diam = (now - lastActive) / 1000;
       if (diam > IDLE) {
-        if (!warn.mesh.visible) { warn.mesh.visible = true; letakkanDepan(warn.mesh, 0.9, 0.05); }
         const sisa = Math.ceil(IDLE + 10 - diam);
-        if (sisa !== warnT) { warnT = sisa; const { ctx, c } = warn; ctx.clearRect(0, 0, c.width, c.height); ctx.fillStyle = 'rgba(12,10,28,.92)'; rr(ctx, 6, 6, c.width - 12, c.height - 12, 40); ctx.fill();
+        if (XH) { if (sisa !== warnT) { warnT = sisa; XH.peringatan(sisa); } }
+        else if (!warn.mesh.visible) { warn.mesh.visible = true; letakkanDepan(warn.mesh, 0.9, 0.05); }
+        if (!XH && sisa !== warnT) { warnT = sisa; const { ctx, c } = warn; ctx.clearRect(0, 0, c.width, c.height); ctx.fillStyle = 'rgba(12,10,28,.92)'; rr(ctx, 6, 6, c.width - 12, c.height - 12, 40); ctx.fill();
           ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 6; rr(ctx, 6, 6, c.width - 12, c.height - 12, 40); ctx.stroke(); ctx.textAlign = 'center';
           ctx.fillStyle = '#ffd23f'; ctx.font = `bold 64px ${FONT}`; ctx.fillText(L('Masih bermain?', 'Still playing?'), c.width / 2, 130);
           ctx.fillStyle = '#f4f6ff'; ctx.font = `40px ${FONT}`; ctx.fillText(L(`Gerakkan kepala atau tekan trigger · ${sisa}`, `Move your head or press the trigger · ${sisa}`), c.width / 2, 230);
@@ -195,7 +205,7 @@ export function pasang(renderer, scene, camera, opsi = {}) {
       }
     }
     // tutorial
-    if (tut) {
+    if (tut && !XH) {
       if (tutT < 0) { tutT += dt; if (tutT >= 0) { letakkanDepan(tut.mesh, 1.2, 0.22); tut.mesh.visible = true; tut.mesh.material.opacity = 0; } }
       else if (tut.mesh.visible) { tutT += dt; const o = tutT < .4 ? tutT / .4 : tutT > 11 ? Math.max(0, 1 - (tutT - 11) / .5) : 1; tut.mesh.material.opacity = o; if (o <= 0 && tutT > 1) tut.mesh.visible = false; }
     }

@@ -10,6 +10,7 @@
 <meta name="title-en" content="SAR Robot FPV">
 <meta name="description-en" content="SAR Robot FPV: drive a rescue robot through its camera and find earthquake victims with a thermal camera.">
 <script src="i18n.js"></script>
+<script src="xiaohuo.js" defer></script>
 <link rel="stylesheet" href="tema.css">
 <style>
   :root{--accent:#ff7a2a;--a1:#ff8a3d;--a2:#ff3f5e}
@@ -306,7 +307,7 @@ function renderTermal() {
   const xr = renderer.xr.enabled; renderer.xr.enabled = false;
   const fog = scene.fog, bg = scene.background; scene.fog = thermFog; scene.background = thermBg;
   for (const m of allMeshes) { m.userData.mat = m.material; m.material = thermMat(m.userData.heat ?? .1); }
-  const hide = [dust, ...flames.map(f => f.s), cockpit, hud]; const vis = hide.map(o => o.visible); hide.forEach(o => o.visible = false);
+  const hide = [dust, ...flames.map(f => f.s), cockpit, hud, window.uversXiaoGrup].filter(Boolean); /* maskot tidak ikut terekam kamera termal */ const vis = hide.map(o => o.visible); hide.forEach(o => o.visible = false);
   renderer.setRenderTarget(thermalRT); renderer.render(scene, thermalCam); renderer.setRenderTarget(null);
   hide.forEach((o, i) => o.visible = vis[i]);
   for (const m of allMeshes) m.material = m.userData.mat;

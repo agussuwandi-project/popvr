@@ -38,6 +38,14 @@ Semua app VR memuat `xrkit.js`, yang menambahkan:
 - **Hand tracking**: titik sendi tangan terlihat (kecuali Pop Bola).
 - **Skor ke papan**: tiap game mengirim skor ke Firebase; bila offline, skor diantre dan dikirim saat online. Robot Mecanum tidak punya skor.
 
+## Asisten Xiao Huo 小火
+
+Maskot TIF (panda merah "Si Api Kecil") tampil sebagai **hologram neon**, asisten berskrip tanpa AI dan tanpa internet.
+
+- **Web** (`xiaohuo.js` + `xiaohuo/*.webp`): melayang di atas piringan proyektor di pojok kanan bawah, dengan gelembung bicara dan tombol pertanyaan cepat (ID/EN). Klik untuk bicara, seret untuk memindahkan (posisi disimpan), klik ganda untuk kembali ke pojok.
+- **VR** (`xiaohuo3d.js` + `xiaohuo-vr.js`, dipasang oleh `xrkit.js`): hologram 2D (pose yang sama persis dengan versi web) di atas piringan proyektor, yang muncul di depan saat masuk VR, membacakan sapaan, tujuan, cara main, dan tips, lalu menepi ke kiri bawah. Bisa **dipegang dan dipindah** (dekatkan controller atau tangan, tahan grip atau trigger/cubit). Juga merayakan skor dan menyampaikan peringatan "Masih bermain?".
+- Naskah per halaman ada di `xiaohuo.js` (objek `APP`).
+
 ## Papan skor
 
 1. Di tiap headset, buka sekali `?hs=Headset1` (Headset2, 3, 4) agar skor tercatat dengan nama headset.
@@ -79,6 +87,10 @@ tema.css, tema.js     Tema bersama (latar aurora, kartu kaca, tombol)
 i18n.js               Bahasa ID/EN dan tombol pengganti bahasa
 xrkit.js              Fitur pameran bersama (tutorial, reset, FPS, skor)
 alien.js              Model musuh & kapal induk mid-poly + ledakan instanced (dipakai Blaster, Benteng, Invasi, Pop Bola)
+xiaohuo.js            Asisten Xiao Huo (web) + naskah
+xiaohuo3d.js          Hologram Xiao Huo untuk VR (panel pose + proyektor)
+xiaohuo-vr.js         Perilaku Xiao Huo di VR (ikut, pegang & pindah, bicara)
+xiaohuo/              6 pose hologram (WebP)
 detail.js             Visual mid/high-poly bersama: tekstur prosedural, material logam/karet/PCB, pantulan, penggabung draw call
 addons/               Tambahan Three.js r160 (RoomEnvironment, BufferGeometryUtils, RoundedBoxGeometry), lisensi MIT
 papan.html            Papan skor untuk laptop
