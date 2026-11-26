@@ -43,7 +43,7 @@ Semua app VR memuat `xrkit.js`, yang menambahkan:
 Maskot TIF (panda merah "Si Api Kecil") tampil sebagai **hologram neon**, asisten berskrip tanpa AI dan tanpa internet.
 
 - **Web** (`xiaohuo.js` + `xiaohuo/*.webp`): melayang di atas piringan proyektor di pojok kanan bawah, dengan gelembung bicara dan tombol pertanyaan cepat (ID/EN). Klik untuk bicara, seret untuk memindahkan (posisi disimpan), klik ganda untuk kembali ke pojok.
-- **VR** (`xiaohuo3d.js` + `xiaohuo-vr.js`, dipasang oleh `xrkit.js`): hologram 2D (pose yang sama persis dengan versi web) di atas piringan proyektor, yang muncul di depan saat masuk VR, membacakan sapaan, tujuan, cara main, dan tips, lalu menepi ke kiri bawah. Bisa **dipegang dan dipindah** (dekatkan controller atau tangan, tahan grip atau trigger/cubit). Juga merayakan skor dan menyampaikan peringatan "Masih bermain?".
+- **VR** (`xiaohuo3d.js` + `xiaohuo-vr.js`, dipasang oleh `xrkit.js`): hologram 2D (pose yang sama persis dengan versi web) di atas piringan proyektor, yang muncul di depan saat masuk VR, membacakan sapaan, tujuan, cara main, dan tips, lalu menepi ke kiri bawah. Bisa **dipegang dan dipindah**: dekatkan controller lalu tahan **grip** (trigger sengaja tidak dipakai agar tidak bentrok dengan menembak), atau cubit bila memakai tangan. Juga merayakan skor dan menyampaikan peringatan "Masih bermain?".
 - Naskah per halaman ada di `xiaohuo.js` (objek `APP`).
 
 ## Papan skor

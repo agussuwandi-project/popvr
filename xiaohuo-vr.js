@@ -1,7 +1,8 @@
 // xiaohuo-vr.js — pengendali Xiao Huo (hologram 2D, pose sama dengan web) di dalam sesi VR. Dipasang oleh xrkit.js.
 //  • Muncul di depan saat masuk VR, melambai, membacakan sapaan + tujuan + cara main + tips (naskah dari xiaohuo.js).
 //  • Lalu menepi ke kiri-bawah pandangan dan mengikuti dengan halus.
-//  • Bisa DIPEGANG & DIPINDAH: dekatkan controller/tangan, tahan grip atau trigger (cubit), geser, lepas → diam di situ.
+//  • Bisa DIPEGANG & DIPINDAH: dekatkan controller lalu tahan GRIP (atau cubit bila pakai tangan), geser, lepas → diam di situ.
+//    Controller sengaja hanya lewat grip: trigger dipakai game untuk menembak/menekan, jadi tidak ikut memegang maskot.
 //  • Bereaksi saat skor masuk papan dan saat peringatan "Masih bermain?".
 import * as THREE from 'three';
 import { buatXiaoHuo } from './xiaohuo3d.js';
@@ -41,7 +42,7 @@ export function pasang(renderer, scene, parent, opsi = {}) {
     const q = [{ t: ['Halo! Aku Xiao Huo, si Api Kecil dari TIF. Aku temanimu di sini!', "Hi! I'm Xiao Huo, the Little Fire of TIF. I'll keep you company!"], e: 'senang', lambai: true }];
     if (N) { q.push({ t: N.tujuan, e: 'normal' }, { t: N.kontrol, e: 'normal' }); N.tips.forEach(t => q.push({ t, e: 'senang' })); }
     else (opsi.tutorial || []).forEach(t => q.push({ t, e: 'normal' }));
-    q.push({ t: ['Aku tunggu di samping ya. Pegang dan geser aku kalau menghalangi!', "I'll wait at your side. Grab and move me if I'm in the way!"], e: 'senang' });
+    q.push({ t: ['Aku tunggu di samping ya. Kalau menghalangi, tahan GRIP di dekatku lalu geser!', "I'll wait at your side. If I'm in the way, hold GRIP near me and move me!"], e: 'senang' });
     return q;
   }
 
@@ -75,18 +76,22 @@ export function pasang(renderer, scene, parent, opsi = {}) {
     const tip = t.h?.joints?.['index-finger-tip']; if (tip && tip.visible !== false && t.h.visible) return tip.getWorldPosition(v);
     return t.c.getWorldPosition(v);
   }
-  function mulaiPegang(i) {
+  function mulaiPegang(i, via) {
     if (!xh.grup.visible || pegang) return false;
     const p = posisiAlat(tangan[i], new THREE.Vector3()); if (p.distanceTo(pusatXh(tmp)) > .24) return false;
-    pegang = { i }; offset.copy(xh.grup.getWorldPosition(new THREE.Vector3())).sub(p); bub.visible = false; xh.ekspresi('senang'); xh.lambai(false); pip(1); return true;
+    pegang = { i, via }; offset.copy(xh.grup.getWorldPosition(new THREE.Vector3())).sub(p); bub.visible = false; xh.ekspresi('senang'); xh.lambai(false); pip(1); return true;
   }
-  function lepasPegang(i) {
-    if (!pegang || pegang.i !== i) return; pegang = null; mode = 'taruh'; taruhLokal.copy(xh.grup.position);
+  function lepasPegang(i, via) {
+    if (!pegang || pegang.i !== i || pegang.via !== via) return; pegang = null; mode = 'taruh'; taruhLokal.copy(xh.grup.position);
     xh.lompat(); antre = []; bicara({ t: ['Di sini ya! Panggil aku dengan memegangku lagi.', 'Right here! Grab me again any time.'], e: 'senang' });
   }
   tangan.forEach((t, i) => {
-    t.c.addEventListener('squeezestart', () => mulaiPegang(i)); t.c.addEventListener('selectstart', () => { if (!mulaiPegang(i) && bub.visible && tBaris > 1) lanjut(); });
-    t.c.addEventListener('squeezeend', () => lepasPegang(i)); t.c.addEventListener('selectend', () => lepasPegang(i));
+    // controller: pegang hanya dengan GRIP; tangan (tanpa tombol grip): pegang dengan cubit
+    const pakaiTangan = (e) => !!e?.data?.hand;
+    t.c.addEventListener('squeezestart', () => mulaiPegang(i, 'grip'));
+    t.c.addEventListener('squeezeend', () => lepasPegang(i, 'grip'));
+    t.c.addEventListener('selectstart', (e) => { if (pakaiTangan(e) && mulaiPegang(i, 'cubit')) return; if (bub.visible && tBaris > 1) lanjut(); });
+    t.c.addEventListener('selectend', () => lepasPegang(i, 'cubit'));
   });
 
   // ---------- skor masuk papan → rayakan ----------
